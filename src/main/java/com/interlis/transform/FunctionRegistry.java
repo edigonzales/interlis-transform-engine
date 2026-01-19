@@ -1,0 +1,71 @@
+package com.interlis.transform;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+public final class FunctionRegistry {
+    private final Map<String, ExpressionFunction> functions = new HashMap<>();
+
+    public FunctionRegistry() {
+        registerDefaults();
+    }
+
+    public void register(String name, ExpressionFunction function) {
+        functions.put(name, function);
+    }
+
+    public ExpressionFunction get(String name) {
+        ExpressionFunction function = functions.get(name);
+        if (function == null) {
+            throw new IllegalArgumentException("Unknown function: " + name);
+        }
+        return function;
+    }
+
+    private void registerDefaults() {
+        register("substring", args -> {
+            String value = Objects.toString(args.get(0), "");
+            int start = toInt(args.get(1));
+            int length = toInt(args.get(2));
+            int end = Math.min(value.length(), start + length);
+            if (start >= value.length()) {
+                return "";
+            }
+            return value.substring(Math.max(0, start), end);
+        });
+        register("coalesce", args -> {
+            for (Object arg : args) {
+                if (arg != null) {
+                    String value = arg.toString();
+                    if (!value.isBlank()) {
+                        return value;
+                    }
+                }
+            }
+            return null;
+        });
+        register("add", args -> {
+            double sum = 0;
+            for (Object arg : args) {
+                if (arg == null) {
+                    continue;
+                }
+                sum += Double.parseDouble(arg.toString());
+            }
+            if (Math.floor(sum) == sum) {
+                return Long.toString((long) sum);
+            }
+            return Double.toString(sum);
+        });
+    }
+
+    private int toInt(Object value) {
+        return Integer.parseInt(Objects.toString(value));
+    }
+
+    public Object invoke(String name, List<Object> args) {
+        return get(name).apply(args);
+    }
+}
