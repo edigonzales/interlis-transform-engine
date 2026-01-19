@@ -23,8 +23,8 @@ class MappingConfigLoaderTest {
         assertThat(config.getMappings()).isNotNull();
         assertThat(config.getMappings()).hasSize(1);
         MappingRule rule = config.getMappings().get(0);
-        assertThat(rule.getSourceClass()).isEqualTo("Liegenschaften.LSNachfuehrung");
-        assertThat(rule.getTargetClass()).isEqualTo("Grundstuecke.GSNachfuehrung");
+        assertThat(rule.getSourceClass()).isEqualTo("DM01AVCH24LV95D.Liegenschaften.LSNachfuehrung");
+        assertThat(rule.getTargetClass()).isEqualTo("DMAV_Grundstuecke_V1_0.Grundstuecke.GSNachfuehrung");
         assertThat(rule.getAttributes()).hasSize(7);
     }
 }

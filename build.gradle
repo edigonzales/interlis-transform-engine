@@ -33,6 +33,16 @@ application {
     mainClass = 'com.interlis.transform.App'
 }
 
+run {
+    args = [
+            "src/main/resources/mappings/liegenschaften-to-grundstuecke.yaml",
+            "/Users/stefan/Downloads/ch_2549.itf",
+            "./dmav_2549_grundstuecke.xtf",
+            "/Users/stefan/Downloads/DM.01-AV-CH_LV95_24d_ili1.ili",
+            "/Users/stefan/Downloads/DMAV_Grundstuecke_V1_0.ili"
+    ]
+}
+
 sourceSets {
     integrationTest {
         java.srcDir 'src/integrationTest/java'

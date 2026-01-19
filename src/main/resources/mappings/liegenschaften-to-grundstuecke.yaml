@@ -1,6 +1,6 @@
 mappings:
-  - sourceClass: Liegenschaften.LSNachfuehrung
-    targetClass: Grundstuecke.GSNachfuehrung
+  - sourceClass: DM01AVCH24LV95D.Liegenschaften.LSNachfuehrung
+    targetClass: DMAV_Grundstuecke_V1_0.Grundstuecke.GSNachfuehrung
     oidStrategy: preserve
     attributes:
       - target: NBIdent
