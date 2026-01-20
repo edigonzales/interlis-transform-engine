@@ -14,6 +14,6 @@ mappings:
       - target: Mutationsart
         expr: "'Normal'"
       - target: GueltigerEintrag
-        expr: "coalesce(${src.GueltigerEintrag}, ${src.Datum1}, ${src.Datum2})"
+        expr: "coalesce(to_xml_date(${src.GueltigerEintrag}, 'yyyyMMdd'), to_xml_date(${src.Datum1}, 'yyyyMMdd'), to_xml_date(${src.Datum2}, 'yyyyMMdd'))"
       - target: Grundbucheintrag
-        expr: "coalesce(${src.GBEintrag}, ${src.Datum2})"
+        expr: "coalesce(to_xml_date(${src.GBEintrag}, 'yyyyMMdd'), to_xml_date(${src.Datum2}, 'yyyyMMdd'))"

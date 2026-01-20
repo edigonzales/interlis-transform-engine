@@ -51,4 +51,24 @@ class ExpressionEngineTest {
         assertThat(sum).isEqualTo("7");
         assertThat(comparison).isEqualTo(true);
     }
+
+    @Test
+    void evaluatesToXmlDate() {
+        ExpressionEngine engine = new BasicExpressionEngine(new FunctionRegistry());
+        Iom_jObject source = new Iom_jObject("ModelA.Foo", null);
+        TransformationContext context = new DefaultTransformationContext(
+                source,
+                target -> {
+                },
+                engine,
+                new InMemoryStateStore(),
+                Logger.getLogger("test")
+        );
+
+        Object formatted = engine.evaluate("to_xml_date('20010302', 'yyyyMMdd')", context);
+        Object emptyValue = engine.evaluate("to_xml_date('', 'yyyyMMdd')", context);
+
+        assertThat(formatted).isEqualTo("2001-03-02");
+        assertThat(emptyValue).isNull();
+    }
 }

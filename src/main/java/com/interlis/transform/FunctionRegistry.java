@@ -4,6 +4,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 public final class FunctionRegistry {
     private final Map<String, ExpressionFunction> functions = new HashMap<>();
@@ -58,6 +61,26 @@ public final class FunctionRegistry {
                 return Long.toString((long) sum);
             }
             return Double.toString(sum);
+        });
+        register("to_xml_date", args -> {
+            if (args.isEmpty()) {
+                throw new IllegalArgumentException("to_xml_date requires at least a value argument");
+            }
+            Object value = args.get(0);
+            if (value == null) {
+                return null;
+            }
+            String raw = value.toString().trim();
+            if (raw.isEmpty()) {
+                return null;
+            }
+            String pattern = args.size() > 1 ? Objects.toString(args.get(1), "yyyyMMdd") : "yyyyMMdd";
+            try {
+                LocalDate date = LocalDate.parse(raw, DateTimeFormatter.ofPattern(pattern));
+                return date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException("Invalid date value '" + raw + "' for pattern '" + pattern + "'", e);
+            }
         });
     }
 
