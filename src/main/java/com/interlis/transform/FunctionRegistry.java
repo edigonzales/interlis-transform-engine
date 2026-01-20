@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
@@ -80,6 +81,30 @@ public final class FunctionRegistry {
                 return date.format(DateTimeFormatter.ISO_LOCAL_DATE);
             } catch (DateTimeParseException e) {
                 throw new IllegalArgumentException("Invalid date value '" + raw + "' for pattern '" + pattern + "'", e);
+            }
+        });
+        register("to_xml_datetime", args -> {
+            if (args.isEmpty()) {
+                throw new IllegalArgumentException("to_xml_datetime requires at least a value argument");
+            }
+            Object value = args.get(0);
+            if (value == null) {
+                return null;
+            }
+            String raw = value.toString().trim();
+            if (raw.isEmpty()) {
+                return null;
+            }
+            String pattern = args.size() > 1 ? Objects.toString(args.get(1), "yyyyMMdd") : "yyyyMMdd";
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+            try {
+                if (pattern.matches(".*[HhKkms].*")) {
+                    return LocalDateTime.parse(raw, formatter).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                }
+                LocalDate date = LocalDate.parse(raw, formatter);
+                return date.atStartOfDay().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException("Invalid datetime value '" + raw + "' for pattern '" + pattern + "'", e);
             }
         });
     }

@@ -71,4 +71,26 @@ class ExpressionEngineTest {
         assertThat(formatted).isEqualTo("2001-03-02");
         assertThat(emptyValue).isNull();
     }
+
+    @Test
+    void evaluatesToXmlDateTime() {
+        ExpressionEngine engine = new BasicExpressionEngine(new FunctionRegistry());
+        Iom_jObject source = new Iom_jObject("ModelA.Foo", null);
+        TransformationContext context = new DefaultTransformationContext(
+                source,
+                target -> {
+                },
+                engine,
+                new InMemoryStateStore(),
+                Logger.getLogger("test")
+        );
+
+        Object formattedDate = engine.evaluate("to_xml_datetime('20010302', 'yyyyMMdd')", context);
+        Object formattedDateTime = engine.evaluate("to_xml_datetime('2001-03-02 12:30:15', 'yyyy-MM-dd HH:mm:ss')", context);
+        Object emptyValue = engine.evaluate("to_xml_datetime('', 'yyyyMMdd')", context);
+
+        assertThat(formattedDate).isEqualTo("2001-03-02T00:00:00");
+        assertThat(formattedDateTime).isEqualTo("2001-03-02T12:30:15");
+        assertThat(emptyValue).isNull();
+    }
 }
