@@ -8,6 +8,9 @@ import ch.interlis.iox.IoxReader;
 import ch.interlis.iox.IoxWriter;
 import ch.interlis.iox_j.EndTransferEvent;
 import ch.interlis.iox_j.ObjectEvent;
+import ch.interlis.iox_j.StartBasketEvent;
+import ch.interlis.iox_j.StartTransferEvent;
+import ch.interlis.iox_j.EndBasketEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -60,21 +63,26 @@ class TransformationEngineIT {
     }
 
     private static final class SingleObjectReader implements IoxReader {
-        private final IomObject object;
-        private boolean emitted;
+        private final List<IoxEvent> events;
+        private int index;
         private IoxFactoryCollection factory;
 
         private SingleObjectReader(IomObject object) {
-            this.object = object;
+            this.events = List.of(
+                    new StartTransferEvent("test-sender", "test-comment", "1.0"),
+                    new StartBasketEvent("ModelA.Foo", "1"),
+                    new ObjectEvent(object),
+                    new EndBasketEvent(),
+                    new EndTransferEvent()
+            );
         }
 
         @Override
         public IoxEvent read() {
-            if (!emitted) {
-                emitted = true;
-                return new ObjectEvent(object);
+            if (index >= events.size()) {
+                return null;
             }
-            return new EndTransferEvent();
+            return events.get(index++);
         }
 
         @Override

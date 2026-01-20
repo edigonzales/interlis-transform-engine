@@ -3,6 +3,7 @@ package com.interlis.transform;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 public final class SimpleTransformationPlan implements TransformationPlan {
     private final Map<String, ClassRuleSet> rules;
@@ -14,5 +15,10 @@ public final class SimpleTransformationPlan implements TransformationPlan {
     @Override
     public Optional<ClassRuleSet> rulesFor(String sourceClassName) {
         return Optional.ofNullable(rules.get(sourceClassName));
+    }
+
+    @Override
+    public Set<String> sourceClassNames() {
+        return rules.keySet();
     }
 }

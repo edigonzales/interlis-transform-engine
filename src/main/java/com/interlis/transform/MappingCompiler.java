@@ -36,7 +36,7 @@ public final class MappingCompiler {
                 }
             }
             processors.add(new EmitProcessor());
-            rules.put(rule.getSourceClass(), new DefaultClassRuleSet(processors));
+            rules.put(rule.getSourceClass(), new DefaultClassRuleSet(rule.getTargetClass(), processors));
         }
         return new SimpleTransformationPlan(rules);
     }
