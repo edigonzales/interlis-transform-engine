@@ -1,5 +1,5 @@
 mappings:
-  - sourceClass: DM01AVCH24LV95D.Liegenschaften.LSNachfuehrung
+  - sourceClass: DM01AVSO24LV95.Liegenschaften.LSNachfuehrung
     targetClass: DMAV_Grundstuecke_V1_0.Grundstuecke.GSNachfuehrung
     oidStrategy: preserve
     attributes:
