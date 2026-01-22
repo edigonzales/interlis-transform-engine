@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 
 public final class MappingCompiler {
     private static final Pattern SOURCE_ATTR_PATTERN = Pattern.compile("\\$\\{src\\.(?<attr>[^}]+)}");
+    private static final List<String> SUPPORTED_OID_STRATEGIES = List.of("preserve", "uuid", "generate");
     private final TypeSystem typeSystem;
 
     public MappingCompiler(TypeSystem typeSystem) {
@@ -43,7 +44,7 @@ public final class MappingCompiler {
                     processors.add(new FilterProcessor(filter.getExpr()));
                 }
             }
-            processors.add(new CreateTargetObjectProcessor(rule.getTargetClass()));
+            processors.add(new CreateTargetObjectProcessor(rule.getTargetClass(), rule.getOidStrategy()));
             if (rule.getAttributes() != null) {
                 for (AttributeMapping mapping : rule.getAttributes()) {
                     processors.add(new MapAttributeProcessor(mapping.getTarget(), mapping.getExpr()));
@@ -61,6 +62,10 @@ public final class MappingCompiler {
         }
         if (!typeSystem.classExists(rule.getTargetClass())) {
             throw new IllegalArgumentException("Unknown target class: " + rule.getTargetClass());
+        }
+        if (rule.getOidStrategy() != null && SUPPORTED_OID_STRATEGIES.stream()
+                .noneMatch(strategy -> strategy.equalsIgnoreCase(rule.getOidStrategy()))) {
+            throw new IllegalArgumentException("Unknown oidStrategy: " + rule.getOidStrategy());
         }
         if (rule.getAttributes() != null) {
             for (AttributeMapping mapping : rule.getAttributes()) {
