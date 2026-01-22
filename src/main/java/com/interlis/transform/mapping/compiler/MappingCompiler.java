@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 
 public final class MappingCompiler {
     private static final Pattern SOURCE_ATTR_PATTERN = Pattern.compile("\\$\\{src\\.(?<attr>[^}]+)}");
-    private static final List<String> SUPPORTED_OID_STRATEGIES = List.of("preserve", "uuid", "generate");
+    private static final List<String> SUPPORTED_ID_STRATEGIES = List.of("preserve", "uuid", "generate");
     private final TypeSystem typeSystem;
 
     public MappingCompiler(TypeSystem typeSystem) {
@@ -33,8 +33,9 @@ public final class MappingCompiler {
 
     public TransformationPlan compile(MappingConfig config) {
         Map<String, ClassRuleSet> rules = new HashMap<>();
+        validateBasketStrategy(config.getBasketIdStrategy());
         if (config.getMappings() == null) {
-            return new SimpleTransformationPlan(rules);
+            return new SimpleTransformationPlan(rules, config.getBasketIdStrategy());
         }
         for (MappingRule rule : config.getMappings()) {
             validate(rule);
@@ -53,7 +54,7 @@ public final class MappingCompiler {
             processors.add(new EmitProcessor());
             rules.put(rule.getSourceClass(), new DefaultClassRuleSet(rule.getTargetClass(), processors));
         }
-        return new SimpleTransformationPlan(rules);
+        return new SimpleTransformationPlan(rules, config.getBasketIdStrategy());
     }
 
     private void validate(MappingRule rule) {
@@ -63,7 +64,7 @@ public final class MappingCompiler {
         if (!typeSystem.classExists(rule.getTargetClass())) {
             throw new IllegalArgumentException("Unknown target class: " + rule.getTargetClass());
         }
-        if (rule.getOidStrategy() != null && SUPPORTED_OID_STRATEGIES.stream()
+        if (rule.getOidStrategy() != null && SUPPORTED_ID_STRATEGIES.stream()
                 .noneMatch(strategy -> strategy.equalsIgnoreCase(rule.getOidStrategy()))) {
             throw new IllegalArgumentException("Unknown oidStrategy: " + rule.getOidStrategy());
         }
@@ -80,6 +81,13 @@ public final class MappingCompiler {
                     }
                 }
             }
+        }
+    }
+
+    private void validateBasketStrategy(String basketIdStrategy) {
+        if (basketIdStrategy != null && SUPPORTED_ID_STRATEGIES.stream()
+                .noneMatch(strategy -> strategy.equalsIgnoreCase(basketIdStrategy))) {
+            throw new IllegalArgumentException("Unknown basketIdStrategy: " + basketIdStrategy);
         }
     }
 }

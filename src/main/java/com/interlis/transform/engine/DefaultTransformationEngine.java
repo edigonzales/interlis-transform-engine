@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 public final class DefaultTransformationEngine implements TransformationEngine {
@@ -51,7 +52,7 @@ public final class DefaultTransformationEngine implements TransformationEngine {
                 StartBasketEvent basket = (StartBasketEvent) event;
                 String targetTopic = topicMapping.get(basket.getType());
                 if (targetTopic != null) {
-                    writer.write(new ch.interlis.iox_j.StartBasketEvent(targetTopic, basket.getBid()));
+                    writer.write(new ch.interlis.iox_j.StartBasketEvent(targetTopic, resolveBasketId(plan, basket.getBid())));
                     writeBasket = true;
                 } else {
                     writeBasket = false;
@@ -128,5 +129,16 @@ public final class DefaultTransformationEngine implements TransformationEngine {
             return null;
         }
         return parts[0] + "." + parts[1];
+    }
+
+    private String resolveBasketId(TransformationPlan plan, String sourceBid) {
+        Optional<String> basketIdStrategy = plan.basketIdStrategy();
+        if (basketIdStrategy.isEmpty() || "preserve".equalsIgnoreCase(basketIdStrategy.get())) {
+            return sourceBid;
+        }
+        if ("uuid".equalsIgnoreCase(basketIdStrategy.get()) || "generate".equalsIgnoreCase(basketIdStrategy.get())) {
+            return UUID.randomUUID().toString();
+        }
+        return sourceBid;
     }
 }
