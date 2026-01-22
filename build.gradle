@@ -30,7 +30,7 @@ dependencies {
 }
 
 application {
-    mainClass = 'com.interlis.transform.App'
+    mainClass = 'com.interlis.transform.app.App'
 }
 
 run {
