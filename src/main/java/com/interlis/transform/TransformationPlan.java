@@ -1,5 +1,6 @@
 package com.interlis.transform;
 
+import com.interlis.transform.rules.ClassRuleSet;
 import java.util.Optional;
 import java.util.Set;
 
