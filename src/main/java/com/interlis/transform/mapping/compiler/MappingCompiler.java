@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 
 public final class MappingCompiler {
     private static final Pattern SOURCE_ATTR_PATTERN = Pattern.compile("\\$\\{src\\.(?<attr>[^}]+)}");
-    private static final List<String> SUPPORTED_ID_STRATEGIES = List.of("preserve", "uuid", "generate");
+    private static final List<String> SUPPORTED_ID_STRATEGIES = List.of("preserve", "uuid", "generate", "integer");
     private final TypeSystem typeSystem;
 
     public MappingCompiler(TypeSystem typeSystem) {

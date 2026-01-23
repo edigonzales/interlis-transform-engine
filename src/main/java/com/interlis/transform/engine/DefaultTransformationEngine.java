@@ -139,6 +139,9 @@ public final class DefaultTransformationEngine implements TransformationEngine {
         if ("uuid".equalsIgnoreCase(basketIdStrategy.get()) || "generate".equalsIgnoreCase(basketIdStrategy.get())) {
             return UUID.randomUUID().toString();
         }
+        if ("integer".equalsIgnoreCase(basketIdStrategy.get())) {
+            return Long.toString(stateStore.nextBasketId());
+        }
         return sourceBid;
     }
 }

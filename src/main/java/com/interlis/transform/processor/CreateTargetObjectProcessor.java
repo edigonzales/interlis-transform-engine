@@ -23,6 +23,8 @@ public final class CreateTargetObjectProcessor implements Processor {
             oid = ctx.source().getobjectoid();
         } else if ("uuid".equalsIgnoreCase(oidStrategy) || "generate".equalsIgnoreCase(oidStrategy)) {
             oid = UUID.randomUUID().toString();
+        } else if ("integer".equalsIgnoreCase(oidStrategy)) {
+            oid = Long.toString(ctx.state().nextObjectId());
         }
         IomObject target = new Iom_jObject(targetClass, oid);
         ctx.target(target);

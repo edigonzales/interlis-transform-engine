@@ -1,0 +1,20 @@
+basketIdStrategy: integer
+mappings:
+  - sourceClass: DMAV_Grundstuecke_V1_0.Grundstuecke.GSNachfuehrung
+    targetClass: DM01AVCH24LV95D.Liegenschaften.LSNachfuehrung
+    oidStrategy: integer
+    attributes:
+      - target: NBIdent
+        expr: "${src.NBIdent}"
+      - target: Identifikator
+        expr: "${src.Identifikator}"
+      - target: Beschreibung
+        expr: "${src.Beschreibung}"
+      #- target: Perimeter
+      #  expr: "${src.Perimeter}"
+      #- target: Mutationsart
+      #  expr: "'Normal'"
+      #- target: GueltigerEintrag
+      #  expr: "coalesce(to_xml_datetime(${src.GueltigerEintrag}, 'yyyyMMdd'), to_xml_datetime(${src.Datum1}, 'yyyyMMdd'), to_xml_datetime(${src.Datum2}, 'yyyyMMdd'))"
+      #- target: Grundbucheintrag
+       # expr: "coalesce(to_xml_datetime(${src.GBEintrag}, 'yyyyMMdd'), to_xml_datetime(${src.Datum2}, 'yyyyMMdd'))"
