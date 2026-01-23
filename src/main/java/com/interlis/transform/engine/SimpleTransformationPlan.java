@@ -9,9 +9,11 @@ import java.util.Set;
 
 public final class SimpleTransformationPlan implements TransformationPlan {
     private final Map<String, ClassRuleSet> rules;
+    private final String basketIdStrategy;
 
-    public SimpleTransformationPlan(Map<String, ClassRuleSet> rules) {
+    public SimpleTransformationPlan(Map<String, ClassRuleSet> rules, String basketIdStrategy) {
         this.rules = Map.copyOf(Objects.requireNonNull(rules, "rules"));
+        this.basketIdStrategy = basketIdStrategy;
     }
 
     @Override
@@ -22,5 +24,10 @@ public final class SimpleTransformationPlan implements TransformationPlan {
     @Override
     public Set<String> sourceClassNames() {
         return rules.keySet();
+    }
+
+    @Override
+    public Optional<String> basketIdStrategy() {
+        return Optional.ofNullable(basketIdStrategy);
     }
 }

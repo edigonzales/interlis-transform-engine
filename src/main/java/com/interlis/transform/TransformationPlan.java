@@ -8,4 +8,6 @@ public interface TransformationPlan {
     Optional<ClassRuleSet> rulesFor(String sourceClassName);
 
     Set<String> sourceClassNames();
+
+    Optional<String> basketIdStrategy();
 }
