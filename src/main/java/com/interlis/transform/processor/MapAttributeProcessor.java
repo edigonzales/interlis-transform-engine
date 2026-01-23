@@ -19,7 +19,15 @@ public final class MapAttributeProcessor implements Processor {
         IomObject target = ctx.target().orElseThrow(() -> new IllegalStateException("Target object not initialized"));
         Object value = ctx.expr().evaluate(expression, ctx);
         if (value != null) {
-            target.setattrvalue(targetAttribute, value.toString());
+            if (value instanceof IomObject) {
+                int valueCount = target.getattrvaluecount(targetAttribute);
+                for (int i = valueCount - 1; i >= 0; i--) {
+                    target.deleteattrobj(targetAttribute, i);
+                }
+                target.addattrobj(targetAttribute, (IomObject) value);
+            } else {
+                target.setattrvalue(targetAttribute, value.toString());
+            }
         }
     }
 }
