@@ -1,5 +1,6 @@
 package com.interlis.transform.expression;
 
+import ch.interlis.iom.IomObject;
 import com.interlis.transform.TransformationContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,6 +69,10 @@ public final class BasicExpressionEngine implements ExpressionEngine {
     private Object resolvePath(String token, TransformationContext context) {
         if (token.startsWith("src.")) {
             String attr = token.substring("src.".length());
+            IomObject attrObj = context.source().getattrobj(attr, 0);
+            if (attrObj != null) {
+                return attrObj;
+            }
             return context.source().getattrvalue(attr);
         }
         if (token.startsWith("state.")) {

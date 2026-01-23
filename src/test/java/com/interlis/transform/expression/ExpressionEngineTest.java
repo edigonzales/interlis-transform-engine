@@ -1,5 +1,6 @@
 package com.interlis.transform.expression;
 
+import ch.interlis.iom.IomObject;
 import ch.interlis.iom_j.Iom_jObject;
 import com.interlis.transform.TransformationContext;
 import com.interlis.transform.engine.DefaultTransformationContext;
@@ -95,5 +96,26 @@ class ExpressionEngineTest {
         assertThat(formattedDate).isEqualTo("2001-03-02T00:00:00");
         assertThat(formattedDateTime).isEqualTo("2001-03-02T12:30:15");
         assertThat(emptyValue).isNull();
+    }
+
+    @Test
+    void resolvesSourceAttributeObjects() {
+        ExpressionEngine engine = new BasicExpressionEngine(new FunctionRegistry());
+        Iom_jObject source = new Iom_jObject("ModelA.Foo", null);
+        IomObject geometry = new Iom_jObject("ModelA.Geometry", null);
+        source.addattrobj("geom", geometry);
+
+        TransformationContext context = new DefaultTransformationContext(
+                source,
+                target -> {
+                },
+                engine,
+                new InMemoryStateStore(),
+                Logger.getLogger("test")
+        );
+
+        Object result = engine.evaluate("${src.geom}", context);
+
+        assertThat(result).isSameAs(geometry);
     }
 }
