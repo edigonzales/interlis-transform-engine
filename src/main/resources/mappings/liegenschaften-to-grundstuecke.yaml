@@ -10,6 +10,7 @@ mappings:
         expr: "${src.Identifikator}"
       - target: Beschreibung
         expr: "${src.Beschreibung}"
+      # Surface geometry copy
       - target: Perimeter
         expr: "${src.Perimeter}"
       - target: Mutationsart
