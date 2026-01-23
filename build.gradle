@@ -35,11 +35,11 @@ application {
 
 run {
     args = [
-            "src/main/resources/mappings/liegenschaften-to-grundstuecke.yaml",
-            "/Users/stefan/Downloads/so_2549.itf",
-            "./dmav_2549_grundstuecke.xtf",
-            "DM01AVSO24LV95",
-            "DMAV_Grundstuecke_V1_0"
+            "src/main/resources/mappings/dmav_to_dm01.yaml",
+            "/Users/stefan/Downloads/Testdaten/DMAVTYM_Alles_V1_0.xtf",
+            "./Testdaten.itf",
+            "DMAV_Grundstuecke_V1_0",
+            "DM01AVCH24LV95D"
     ]
 }
 
