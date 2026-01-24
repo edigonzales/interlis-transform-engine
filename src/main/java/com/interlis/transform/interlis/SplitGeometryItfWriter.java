@@ -36,7 +36,9 @@ public final class SplitGeometryItfWriter implements IoxWriter {
     private final TransferDescription transferDescription;
     private final Map<String, List<GeometryAttribute>> geometryAttributesByTag;
     private List<Element> currentItfTables;
-    private Map<String, List<IomObject>> bufferedObjects;
+    private Map<String, List<BufferedObject>> bufferedObjects;
+    private long generatedOidCounter;
+    private long maxBaseOid;
 
     public SplitGeometryItfWriter(File file, TransferDescription transferDescription) throws IoxException {
         this(new ItfWriter(file, transferDescription), transferDescription);
@@ -47,6 +49,8 @@ public final class SplitGeometryItfWriter implements IoxWriter {
         this.transferDescription = Objects.requireNonNull(transferDescription, "transferDescription");
         this.geometryAttributesByTag = buildGeometryAttributes(transferDescription);
         this.bufferedObjects = new LinkedHashMap<>();
+        this.generatedOidCounter = 0L;
+        this.maxBaseOid = 0L;
     }
 
     @Override
@@ -109,9 +113,15 @@ public final class SplitGeometryItfWriter implements IoxWriter {
             currentItfTables = null;
         }
         bufferedObjects = new LinkedHashMap<>();
+        generatedOidCounter = 0L;
+        maxBaseOid = 0L;
     }
 
     private void handleObject(IomObject source) {
+        String baseOid = source.getobjectoid();
+        if (baseOid != null) {
+            registerBaseOid(baseOid);
+        }
         List<GeometryAttribute> geometryAttributes = geometryAttributesByTag.get(source.getobjecttag());
         if (geometryAttributes == null || geometryAttributes.isEmpty()) {
             bufferObject(tableNameFromTag(source.getobjecttag()), source);
@@ -126,22 +136,37 @@ public final class SplitGeometryItfWriter implements IoxWriter {
                 if (geometryValue == null) {
                     continue;
                 }
-                String geomOid = source.getobjectoid();
-                if (geomOid != null && valueCount > 1) {
-                    geomOid = geomOid + "_" + (index + 1);
-                }
-                String geomTag = geometryTagFromSource(source.getobjecttag(), attrName);
-                Iom_jObject geometryObject = new Iom_jObject(geomTag, geomOid);
                 String geomAttrName = ModelUtilities.getHelperTableGeomAttrName(geometryAttribute.attribute());
-                geometryObject.addattrobj(geomAttrName, geometryValue);
-                if (geometryAttribute.isSurface()) {
-                    String refAttrName = ModelUtilities.getHelperTableMainTableRef(geometryAttribute.attribute());
-                    IomObject ref = geometryObject.addattrobj(refAttrName, Iom_jObject.REF);
-                    if (source.getobjectoid() != null) {
-                        ref.setobjectrefoid(source.getobjectoid());
+                String geomTag = geometryTagFromSource(source.getobjecttag(), attrName);
+                String geometryTag = geometryValue.getobjecttag();
+                if ("SURFACE".equalsIgnoreCase(geometryTag) || "MULTISURFACE".equalsIgnoreCase(geometryTag)) {
+                    List<IomObject> polylines = extractSurfacePolylines(geometryValue);
+                    for (IomObject polyline : polylines) {
+                        bufferGeometryObject(
+                                tableNameFromGeometry(geometryAttribute.attribute()),
+                                geomTag,
+                                geomAttrName,
+                                polyline,
+                                geometryAttribute,
+                                baseOid);
                     }
+                } else if ("POLYLINE".equalsIgnoreCase(geometryTag) || "MULTIPOLYLINE".equalsIgnoreCase(geometryTag)) {
+                    bufferGeometryObject(
+                            tableNameFromGeometry(geometryAttribute.attribute()),
+                            geomTag,
+                            geomAttrName,
+                            geometryValue,
+                            geometryAttribute,
+                            baseOid);
+                } else {
+                    bufferGeometryObject(
+                            tableNameFromGeometry(geometryAttribute.attribute()),
+                            geomTag,
+                            geomAttrName,
+                            geometryValue,
+                            geometryAttribute,
+                            baseOid);
                 }
-                bufferObject(tableNameFromGeometry(geometryAttribute.attribute()), geometryObject);
             }
             for (int index = baseObject.getattrvaluecount(attrName) - 1; index >= 0; index--) {
                 baseObject.deleteattrobj(attrName, index);
@@ -151,21 +176,22 @@ public final class SplitGeometryItfWriter implements IoxWriter {
     }
 
     private void flushBufferedObjects() throws IoxException {
+        generatedOidCounter = maxBaseOid;
         if (currentItfTables != null) {
             for (Element element : currentItfTables) {
                 String tableName = itfTableName(element);
-                List<IomObject> tableObjects = bufferedObjects.remove(tableName);
+                List<BufferedObject> tableObjects = bufferedObjects.remove(tableName);
                 if (tableObjects == null) {
                     continue;
                 }
-                for (IomObject object : tableObjects) {
-                    delegate.write(new ch.interlis.iox_j.ObjectEvent(object));
+                for (BufferedObject object : tableObjects) {
+                    delegate.write(new ch.interlis.iox_j.ObjectEvent(object.toIomObject()));
                 }
             }
         }
-        for (List<IomObject> remaining : bufferedObjects.values()) {
-            for (IomObject object : remaining) {
-                delegate.write(new ch.interlis.iox_j.ObjectEvent(object));
+        for (List<BufferedObject> remaining : bufferedObjects.values()) {
+            for (BufferedObject object : remaining) {
+                delegate.write(new ch.interlis.iox_j.ObjectEvent(object.toIomObject()));
             }
         }
         bufferedObjects.clear();
@@ -177,7 +203,79 @@ public final class SplitGeometryItfWriter implements IoxWriter {
     }
 
     private void bufferObject(String tableName, IomObject object) {
-        bufferedObjects.computeIfAbsent(tableName, key -> new ArrayList<>()).add(object);
+        bufferedObjects.computeIfAbsent(tableName, key -> new ArrayList<>()).add(new ImmediateObject(object));
+    }
+
+    private void bufferGeometryObject(
+            String tableName,
+            String geomTag,
+            String geomAttrName,
+            IomObject geometryValue,
+            GeometryAttribute geometryAttribute,
+            String sourceOid) {
+        bufferedObjects.computeIfAbsent(tableName, key -> new ArrayList<>())
+                .add(new GeometryObject(geomTag, geomAttrName, geometryValue, geometryAttribute, sourceOid));
+    }
+
+    private void registerBaseOid(String baseOid) {
+        Long numericOid = tryParseLong(baseOid);
+        if (numericOid != null && numericOid > maxBaseOid) {
+            maxBaseOid = numericOid;
+        }
+    }
+
+    private String nextGeneratedOid() {
+        generatedOidCounter++;
+        return Long.toString(generatedOidCounter);
+    }
+
+    private Long tryParseLong(String value) {
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private void addGeometryReference(String sourceOid, GeometryAttribute geometryAttribute, Iom_jObject geometryObject) {
+        String refAttrName = ModelUtilities.getHelperTableMainTableRef(geometryAttribute.attribute());
+        IomObject ref = geometryObject.addattrobj(refAttrName, Iom_jObject.REF);
+        if (sourceOid != null) {
+            ref.setobjectrefoid(sourceOid);
+        }
+    }
+
+    private List<IomObject> extractSurfacePolylines(IomObject geometryValue) {
+        List<IomObject> polylines = new ArrayList<>();
+        List<IomObject> surfaces = new ArrayList<>();
+        if ("SURFACE".equalsIgnoreCase(geometryValue.getobjecttag())) {
+            surfaces.add(geometryValue);
+        } else {
+            int surfaceCount = geometryValue.getattrvaluecount("surface");
+            for (int surfaceIndex = 0; surfaceIndex < surfaceCount; surfaceIndex++) {
+                IomObject surface = geometryValue.getattrobj("surface", surfaceIndex);
+                if (surface != null) {
+                    surfaces.add(surface);
+                }
+            }
+        }
+        for (IomObject surface : surfaces) {
+            int boundaryCount = surface.getattrvaluecount("boundary");
+            for (int boundaryIndex = 0; boundaryIndex < boundaryCount; boundaryIndex++) {
+                IomObject boundary = surface.getattrobj("boundary", boundaryIndex);
+                if (boundary == null) {
+                    continue;
+                }
+                int polylineCount = boundary.getattrvaluecount("polyline");
+                for (int polylineIndex = 0; polylineIndex < polylineCount; polylineIndex++) {
+                    IomObject polyline = boundary.getattrobj("polyline", polylineIndex);
+                    if (polyline != null) {
+                        polylines.add(polyline);
+                    }
+                }
+            }
+        }
+        return polylines;
     }
 
     private Map<String, List<GeometryAttribute>> buildGeometryAttributes(TransferDescription transferDescription) {
@@ -246,6 +344,49 @@ public final class SplitGeometryItfWriter implements IoxWriter {
             return viewable.getName() + "_" + attribute.getName();
         }
         return element.getName();
+    }
+
+    private interface BufferedObject {
+        IomObject toIomObject();
+    }
+
+    private record ImmediateObject(IomObject object) implements BufferedObject {
+        @Override
+        public IomObject toIomObject() {
+            return object;
+        }
+    }
+
+    private final class GeometryObject implements BufferedObject {
+        private final String geomTag;
+        private final String geomAttrName;
+        private final IomObject geometryValue;
+        private final GeometryAttribute geometryAttribute;
+        private final String sourceOid;
+
+        private GeometryObject(
+                String geomTag,
+                String geomAttrName,
+                IomObject geometryValue,
+                GeometryAttribute geometryAttribute,
+                String sourceOid) {
+            this.geomTag = geomTag;
+            this.geomAttrName = geomAttrName;
+            this.geometryValue = geometryValue;
+            this.geometryAttribute = geometryAttribute;
+            this.sourceOid = sourceOid;
+        }
+
+        @Override
+        public IomObject toIomObject() {
+            String generatedOid = nextGeneratedOid();
+            Iom_jObject geometryObject = new Iom_jObject(geomTag, generatedOid);
+            geometryObject.addattrobj(geomAttrName, geometryValue);
+            if (geometryAttribute.isSurface()) {
+                addGeometryReference(sourceOid, geometryAttribute, geometryObject);
+            }
+            return geometryObject;
+        }
     }
 
     private record GeometryAttribute(AttributeDef attribute, boolean isSurface) {}
