@@ -15,6 +15,6 @@ mappings:
       #- target: Mutationsart
       #  expr: "'Normal'"
       - target: GueltigerEintrag
-        expr: "to_xml_datetime(${src.GueltigerEintrag}, 'yyyyMMdd')"
+        expr: "to_xml_datetime(${src.GueltigerEintrag}, \"yyyy-MM-dd'T'HH:mm:ss\")"
       - target: GBEintrag
-        expr: "to_xml_datetime(${src.Grundbucheintrag}, 'yyyyMMdd')"
+        expr: "to_xml_datetime(${src.Grundbucheintrag}, \"yyyy-MM-dd'T'HH:mm:ss\")"
