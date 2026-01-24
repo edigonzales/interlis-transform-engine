@@ -111,10 +111,12 @@ class ExpressionEngineTest {
                 Logger.getLogger("test")
         );
 
-        Object formatted = engine.evaluate("from_xml_date('2001-03-02', 'yyyyMMdd')", context);
+        Object formatted = engine.evaluate("from_xml_date('2026-01-24', 'yyyyMMdd')", context);
+        Object formattedDateTime = engine.evaluate("from_xml_date('2026-01-24T12:30:15')", context);
         Object emptyValue = engine.evaluate("from_xml_date('', 'yyyyMMdd')", context);
 
-        assertThat(formatted).isEqualTo("20010302");
+        assertThat(formatted).isEqualTo("20260124");
+        assertThat(formattedDateTime).isEqualTo("20260124");
         assertThat(emptyValue).isNull();
     }
 
@@ -131,12 +133,12 @@ class ExpressionEngineTest {
                 Logger.getLogger("test")
         );
 
-        Object formattedDate = engine.evaluate("from_xml_datetime('2001-03-02', 'yyyyMMdd')", context);
-        Object formattedDateTime = engine.evaluate("from_xml_datetime('2001-03-02T12:30:15', 'yyyyMMdd')", context);
+        Object formattedDate = engine.evaluate("from_xml_datetime('2026-01-24', 'yyyyMMdd')", context);
+        Object formattedDateTime = engine.evaluate("from_xml_datetime('2026-01-24T12:30:15')", context);
         Object emptyValue = engine.evaluate("from_xml_datetime('', 'yyyyMMdd')", context);
 
-        assertThat(formattedDate).isEqualTo("20010302");
-        assertThat(formattedDateTime).isEqualTo("20010302");
+        assertThat(formattedDate).isEqualTo("20260124");
+        assertThat(formattedDateTime).isEqualTo("20260124");
         assertThat(emptyValue).isNull();
     }
 
