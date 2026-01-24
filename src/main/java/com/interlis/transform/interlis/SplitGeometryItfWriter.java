@@ -25,11 +25,13 @@ import ch.interlis.iox.ObjectEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public final class SplitGeometryItfWriter implements IoxWriter {
     private final ItfWriter delegate;
@@ -37,6 +39,8 @@ public final class SplitGeometryItfWriter implements IoxWriter {
     private final Map<String, List<GeometryAttribute>> geometryAttributesByTag;
     private List<Element> currentItfTables;
     private Map<String, List<IomObject>> bufferedObjects;
+    private long generatedOidCounter;
+    private final Set<String> usedObjectIds;
 
     public SplitGeometryItfWriter(File file, TransferDescription transferDescription) throws IoxException {
         this(new ItfWriter(file, transferDescription), transferDescription);
@@ -47,6 +51,8 @@ public final class SplitGeometryItfWriter implements IoxWriter {
         this.transferDescription = Objects.requireNonNull(transferDescription, "transferDescription");
         this.geometryAttributesByTag = buildGeometryAttributes(transferDescription);
         this.bufferedObjects = new LinkedHashMap<>();
+        this.generatedOidCounter = 0L;
+        this.usedObjectIds = new HashSet<>();
     }
 
     @Override
@@ -109,6 +115,7 @@ public final class SplitGeometryItfWriter implements IoxWriter {
             currentItfTables = null;
         }
         bufferedObjects = new LinkedHashMap<>();
+        usedObjectIds.clear();
     }
 
     private void handleObject(IomObject source) {
@@ -118,6 +125,10 @@ public final class SplitGeometryItfWriter implements IoxWriter {
             return;
         }
         Iom_jObject baseObject = new Iom_jObject(source);
+        String baseOid = source.getobjectoid();
+        if (baseOid != null) {
+            usedObjectIds.add(baseOid);
+        }
         for (GeometryAttribute geometryAttribute : geometryAttributes) {
             String attrName = geometryAttribute.attribute().getName();
             int valueCount = source.getattrvaluecount(attrName);
@@ -128,7 +139,7 @@ public final class SplitGeometryItfWriter implements IoxWriter {
                 }
                 String geomAttrName = ModelUtilities.getHelperTableGeomAttrName(geometryAttribute.attribute());
                 String geomTag = geometryTagFromSource(source.getobjecttag(), attrName);
-                String geomOid = source.getobjectoid();
+                String geomOid = baseOid;
                 if (geomOid != null && valueCount > 1) {
                     geomOid = geomOid + "_" + (index + 1);
                 }
@@ -142,6 +153,7 @@ public final class SplitGeometryItfWriter implements IoxWriter {
                         if (polylineOid != null && polylines.size() > 1) {
                             polylineOid = polylineOid + "_" + polylineIndex;
                         }
+                        polylineOid = ensureUniqueOid(polylineOid);
                         Iom_jObject geometryObject = new Iom_jObject(geomTag, polylineOid);
                         geometryObject.addattrobj(geomAttrName, polyline);
                         if (geometryAttribute.isSurface()) {
@@ -150,6 +162,7 @@ public final class SplitGeometryItfWriter implements IoxWriter {
                         bufferObject(tableNameFromGeometry(geometryAttribute.attribute()), geometryObject);
                     }
                 } else if ("POLYLINE".equalsIgnoreCase(geometryTag) || "MULTIPOLYLINE".equalsIgnoreCase(geometryTag)) {
+                    geomOid = ensureUniqueOid(geomOid);
                     Iom_jObject geometryObject = new Iom_jObject(geomTag, geomOid);
                     geometryObject.addattrobj(geomAttrName, geometryValue);
                     if (geometryAttribute.isSurface()) {
@@ -157,6 +170,7 @@ public final class SplitGeometryItfWriter implements IoxWriter {
                     }
                     bufferObject(tableNameFromGeometry(geometryAttribute.attribute()), geometryObject);
                 } else {
+                    geomOid = ensureUniqueOid(geomOid);
                     Iom_jObject geometryObject = new Iom_jObject(geomTag, geomOid);
                     geometryObject.addattrobj(geomAttrName, geometryValue);
                     if (geometryAttribute.isSurface()) {
@@ -200,6 +214,18 @@ public final class SplitGeometryItfWriter implements IoxWriter {
 
     private void bufferObject(String tableName, IomObject object) {
         bufferedObjects.computeIfAbsent(tableName, key -> new ArrayList<>()).add(object);
+    }
+
+    private String ensureUniqueOid(String preferredOid) {
+        if (preferredOid != null && usedObjectIds.add(preferredOid)) {
+            return preferredOid;
+        }
+        String generated;
+        do {
+            generatedOidCounter++;
+            generated = Long.toString(generatedOidCounter);
+        } while (!usedObjectIds.add(generated));
+        return generated;
     }
 
     private void addGeometryReference(IomObject source, GeometryAttribute geometryAttribute, Iom_jObject geometryObject) {
