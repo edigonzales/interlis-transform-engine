@@ -116,6 +116,7 @@ public final class SplitGeometryItfWriter implements IoxWriter {
         }
         bufferedObjects = new LinkedHashMap<>();
         usedObjectIds.clear();
+        generatedOidCounter = 0L;
     }
 
     private void handleObject(IomObject source) {
@@ -127,7 +128,7 @@ public final class SplitGeometryItfWriter implements IoxWriter {
         Iom_jObject baseObject = new Iom_jObject(source);
         String baseOid = source.getobjectoid();
         if (baseOid != null) {
-            usedObjectIds.add(baseOid);
+            registerBaseOid(baseOid);
         }
         for (GeometryAttribute geometryAttribute : geometryAttributes) {
             String attrName = geometryAttribute.attribute().getName();
@@ -139,22 +140,12 @@ public final class SplitGeometryItfWriter implements IoxWriter {
                 }
                 String geomAttrName = ModelUtilities.getHelperTableGeomAttrName(geometryAttribute.attribute());
                 String geomTag = geometryTagFromSource(source.getobjecttag(), attrName);
-                String geomOid = baseOid;
-                if (geomOid != null && valueCount > 1) {
-                    geomOid = geomOid + "_" + (index + 1);
-                }
                 String geometryTag = geometryValue.getobjecttag();
                 if ("SURFACE".equalsIgnoreCase(geometryTag) || "MULTISURFACE".equalsIgnoreCase(geometryTag)) {
                     List<IomObject> polylines = extractSurfacePolylines(geometryValue);
-                    int polylineIndex = 0;
                     for (IomObject polyline : polylines) {
-                        polylineIndex++;
-                        String polylineOid = geomOid;
-                        if (polylineOid != null && polylines.size() > 1) {
-                            polylineOid = polylineOid + "_" + polylineIndex;
-                        }
-                        polylineOid = ensureUniqueOid(polylineOid);
-                        Iom_jObject geometryObject = new Iom_jObject(geomTag, polylineOid);
+                        String generatedOid = nextGeneratedOid();
+                        Iom_jObject geometryObject = new Iom_jObject(geomTag, generatedOid);
                         geometryObject.addattrobj(geomAttrName, polyline);
                         if (geometryAttribute.isSurface()) {
                             addGeometryReference(source, geometryAttribute, geometryObject);
@@ -162,16 +153,16 @@ public final class SplitGeometryItfWriter implements IoxWriter {
                         bufferObject(tableNameFromGeometry(geometryAttribute.attribute()), geometryObject);
                     }
                 } else if ("POLYLINE".equalsIgnoreCase(geometryTag) || "MULTIPOLYLINE".equalsIgnoreCase(geometryTag)) {
-                    geomOid = ensureUniqueOid(geomOid);
-                    Iom_jObject geometryObject = new Iom_jObject(geomTag, geomOid);
+                    String generatedOid = nextGeneratedOid();
+                    Iom_jObject geometryObject = new Iom_jObject(geomTag, generatedOid);
                     geometryObject.addattrobj(geomAttrName, geometryValue);
                     if (geometryAttribute.isSurface()) {
                         addGeometryReference(source, geometryAttribute, geometryObject);
                     }
                     bufferObject(tableNameFromGeometry(geometryAttribute.attribute()), geometryObject);
                 } else {
-                    geomOid = ensureUniqueOid(geomOid);
-                    Iom_jObject geometryObject = new Iom_jObject(geomTag, geomOid);
+                    String generatedOid = nextGeneratedOid();
+                    Iom_jObject geometryObject = new Iom_jObject(geomTag, generatedOid);
                     geometryObject.addattrobj(geomAttrName, geometryValue);
                     if (geometryAttribute.isSurface()) {
                         addGeometryReference(source, geometryAttribute, geometryObject);
@@ -216,16 +207,29 @@ public final class SplitGeometryItfWriter implements IoxWriter {
         bufferedObjects.computeIfAbsent(tableName, key -> new ArrayList<>()).add(object);
     }
 
-    private String ensureUniqueOid(String preferredOid) {
-        if (preferredOid != null && usedObjectIds.add(preferredOid)) {
-            return preferredOid;
+    private void registerBaseOid(String baseOid) {
+        usedObjectIds.add(baseOid);
+        Long numericOid = tryParseLong(baseOid);
+        if (numericOid != null && numericOid > generatedOidCounter) {
+            generatedOidCounter = numericOid;
         }
+    }
+
+    private String nextGeneratedOid() {
         String generated;
         do {
             generatedOidCounter++;
             generated = Long.toString(generatedOidCounter);
         } while (!usedObjectIds.add(generated));
         return generated;
+    }
+
+    private Long tryParseLong(String value) {
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private void addGeometryReference(IomObject source, GeometryAttribute geometryAttribute, Iom_jObject geometryObject) {
