@@ -99,6 +99,50 @@ class ExpressionEngineTest {
     }
 
     @Test
+    void evaluatesFromXmlDate() {
+        ExpressionEngine engine = new BasicExpressionEngine(new FunctionRegistry());
+        Iom_jObject source = new Iom_jObject("ModelA.Foo", null);
+        TransformationContext context = new DefaultTransformationContext(
+                source,
+                target -> {
+                },
+                engine,
+                new InMemoryStateStore(),
+                Logger.getLogger("test")
+        );
+
+        Object formatted = engine.evaluate("from_xml_date('2026-01-24', 'yyyyMMdd')", context);
+        Object formattedDateTime = engine.evaluate("from_xml_date('2026-01-24T12:30:15')", context);
+        Object emptyValue = engine.evaluate("from_xml_date('', 'yyyyMMdd')", context);
+
+        assertThat(formatted).isEqualTo("20260124");
+        assertThat(formattedDateTime).isEqualTo("20260124");
+        assertThat(emptyValue).isNull();
+    }
+
+    @Test
+    void evaluatesFromXmlDateTime() {
+        ExpressionEngine engine = new BasicExpressionEngine(new FunctionRegistry());
+        Iom_jObject source = new Iom_jObject("ModelA.Foo", null);
+        TransformationContext context = new DefaultTransformationContext(
+                source,
+                target -> {
+                },
+                engine,
+                new InMemoryStateStore(),
+                Logger.getLogger("test")
+        );
+
+        Object formattedDate = engine.evaluate("from_xml_datetime('2026-01-24', 'yyyyMMdd')", context);
+        Object formattedDateTime = engine.evaluate("from_xml_datetime('2026-01-24T12:30:15')", context);
+        Object emptyValue = engine.evaluate("from_xml_datetime('', 'yyyyMMdd')", context);
+
+        assertThat(formattedDate).isEqualTo("20260124");
+        assertThat(formattedDateTime).isEqualTo("20260124");
+        assertThat(emptyValue).isNull();
+    }
+
+    @Test
     void resolvesSourceAttributeObjects() {
         ExpressionEngine engine = new BasicExpressionEngine(new FunctionRegistry());
         Iom_jObject source = new Iom_jObject("ModelA.Foo", null);

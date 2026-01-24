@@ -107,6 +107,34 @@ public final class FunctionRegistry {
                 throw new IllegalArgumentException("Invalid datetime value '" + raw + "' for pattern '" + pattern + "'", e);
             }
         });
+        register("from_xml_date", args -> {
+            if (args.isEmpty()) {
+                throw new IllegalArgumentException("from_xml_date requires at least a value argument");
+            }
+            Object value = args.get(0);
+            if (value == null) {
+                return null;
+            }
+            String raw = value.toString().trim();
+            if (raw.isEmpty()) {
+                return null;
+            }
+            String pattern = args.size() > 1 ? Objects.toString(args.get(1), "yyyyMMdd") : "yyyyMMdd";
+            try {
+                LocalDate date = raw.contains("T")
+                        ? LocalDateTime.parse(raw, DateTimeFormatter.ISO_LOCAL_DATE_TIME).toLocalDate()
+                        : LocalDate.parse(raw, DateTimeFormatter.ISO_LOCAL_DATE);
+                return date.format(DateTimeFormatter.ofPattern(pattern));
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException("Invalid date value '" + raw + "' for ISO date", e);
+            }
+        });
+        register("from_xml_datetime", args -> {
+            if (args.isEmpty()) {
+                throw new IllegalArgumentException("from_xml_datetime requires at least a value argument");
+            }
+            return get("from_xml_date").apply(args);
+        });
     }
 
     private int toInt(Object value) {
