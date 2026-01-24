@@ -3,7 +3,6 @@ package com.interlis.transform.interlis;
 import ch.interlis.ili2c.metamodel.Model;
 import ch.interlis.ili2c.metamodel.TransferDescription;
 import ch.interlis.iom_j.itf.ItfReader;
-import ch.interlis.iom_j.itf.ItfWriter;
 import ch.interlis.iom_j.xtf.Xtf23Reader;
 import ch.interlis.iom_j.xtf.Xtf24Reader;
 import ch.interlis.iom_j.xtf.XtfReader;
@@ -46,7 +45,7 @@ public final class InterlisIoFactory {
         Objects.requireNonNull(transferDescription, "transferDescription");
         InterlisFormat format = detectFormat(path);
         if (format == InterlisFormat.ITF) {
-            return new ItfWriter(path.toFile(), transferDescription);
+            return new SplitGeometryItfWriter(path.toFile(), transferDescription);
         }
         return new XtfWriter(path.toFile(), transferDescription);
     }
