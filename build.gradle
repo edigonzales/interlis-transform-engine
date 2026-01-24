@@ -36,8 +36,9 @@ application {
 run {
     args = [
             "src/main/resources/mappings/dmav_to_dm01.yaml",
-            "/Users/stefan/Downloads/Testdaten/DMAVTYM_Alles_V1_0.xtf",
+            "/Users/stefan/Downloads/Testdaten/split/DMAV_Grundstuecke_V1_0.449.xtf",
             "./Testdaten.itf",
+            //"DMAVTYM_Alles_V1_0", 
             "DMAV_Grundstuecke_V1_0",
             "DM01AVCH24LV95D"
     ]

@@ -10,8 +10,8 @@ mappings:
         expr: "${src.Identifikator}"
       - target: Beschreibung
         expr: "${src.Beschreibung}"
-      #- target: Perimeter
-      #  expr: "${src.Perimeter}"
+      - target: Perimeter
+        expr: "${src.Perimeter}"
       #- target: Mutationsart
       #  expr: "'Normal'"
       #- target: GueltigerEintrag
