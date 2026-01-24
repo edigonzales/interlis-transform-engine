@@ -14,7 +14,7 @@ mappings:
         expr: "${src.Perimeter}"
       #- target: Mutationsart
       #  expr: "'Normal'"
-      #- target: GueltigerEintrag
-      #  expr: "coalesce(to_xml_datetime(${src.GueltigerEintrag}, 'yyyyMMdd'), to_xml_datetime(${src.Datum1}, 'yyyyMMdd'), to_xml_datetime(${src.Datum2}, 'yyyyMMdd'))"
-      #- target: Grundbucheintrag
-       # expr: "coalesce(to_xml_datetime(${src.GBEintrag}, 'yyyyMMdd'), to_xml_datetime(${src.Datum2}, 'yyyyMMdd'))"
+      - target: GueltigerEintrag
+        expr: "coalesce(from_xml_datetime(${src.GueltigerEintrag}, 'yyyyMMdd'), from_xml_datetime(${src.Datum1}, 'yyyyMMdd'), from_xml_datetime(${src.Datum2}, 'yyyyMMdd'))"
+      - target: Grundbucheintrag
+        expr: "coalesce(from_xml_datetime(${src.GBEintrag}, 'yyyyMMdd'), from_xml_datetime(${src.Datum2}, 'yyyyMMdd'))"
