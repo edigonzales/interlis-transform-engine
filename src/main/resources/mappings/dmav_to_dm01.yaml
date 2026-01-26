@@ -1,7 +1,9 @@
 basketIdStrategy: integer
 mappings:
-  - sourceClass: DMAV_Grundstuecke_V1_0.Grundstuecke.GSNachfuehrung
-    targetClass: DM01AVCH24LV95D.Liegenschaften.LSNachfuehrung
+  - targetClass: DM01AVCH24LV95D.Liegenschaften.LSNachfuehrung
+    sources:
+      - sourceClass: DMAV_Grundstuecke_V1_0.Grundstuecke.GSNachfuehrung
+        alias: src
     oidStrategy: integer
     attributes:
       - target: NBIdent

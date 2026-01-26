@@ -7,7 +7,8 @@ import com.interlis.transform.engine.SimpleTransformationPlan;
 import com.interlis.transform.mapping.AttributeMapping;
 import com.interlis.transform.mapping.FilterRule;
 import com.interlis.transform.mapping.MappingConfig;
-import com.interlis.transform.mapping.MappingRule;
+import com.interlis.transform.mapping.SourceSpec;
+import com.interlis.transform.mapping.TargetMapping;
 import com.interlis.transform.processor.CreateTargetObjectProcessor;
 import com.interlis.transform.processor.EmitProcessor;
 import com.interlis.transform.processor.FilterProcessor;
@@ -23,7 +24,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class MappingCompiler {
-    private static final Pattern SOURCE_ATTR_PATTERN = Pattern.compile("\\$\\{src\\.(?<attr>[^}]+)}");
+    private static final Pattern SOURCE_ATTR_PATTERN =
+            Pattern.compile("\\$\\{src(?:\\.(?<alias>[^.}]+))?\\.(?<attr>[^}]+)}");
     private static final List<String> SUPPORTED_ID_STRATEGIES = List.of("preserve", "uuid", "generate", "integer");
     private final TypeSystem typeSystem;
 
@@ -37,51 +39,76 @@ public final class MappingCompiler {
         if (config.getMappings() == null) {
             return new SimpleTransformationPlan(rules, config.getBasketIdStrategy());
         }
-        for (MappingRule rule : config.getMappings()) {
-            validate(rule);
+        for (TargetMapping mapping : config.getMappings()) {
+            validate(mapping);
             List<Processor> processors = new ArrayList<>();
-            if (rule.getFilters() != null) {
-                for (FilterRule filter : rule.getFilters()) {
+            if (mapping.getFilters() != null) {
+                for (FilterRule filter : mapping.getFilters()) {
                     processors.add(new FilterProcessor(filter.getExpr()));
                 }
             }
-            processors.add(new CreateTargetObjectProcessor(rule.getTargetClass(), rule.getOidStrategy()));
-            if (rule.getAttributes() != null) {
-                for (AttributeMapping mapping : rule.getAttributes()) {
-                    processors.add(new MapAttributeProcessor(mapping.getTarget(), mapping.getExpr()));
+            processors.add(new CreateTargetObjectProcessor(mapping.getTargetClass(), mapping.getOidStrategy()));
+            if (mapping.getAttributes() != null) {
+                for (AttributeMapping attributeMapping : mapping.getAttributes()) {
+                    processors.add(new MapAttributeProcessor(attributeMapping.getTarget(), attributeMapping.getExpr()));
                 }
             }
             processors.add(new EmitProcessor());
-            rules.put(rule.getSourceClass(), new DefaultClassRuleSet(rule.getTargetClass(), processors));
+            for (SourceSpec source : mapping.getSources()) {
+                rules.put(source.getSourceClass(), new DefaultClassRuleSet(mapping.getTargetClass(), processors));
+            }
         }
         return new SimpleTransformationPlan(rules, config.getBasketIdStrategy());
     }
 
-    private void validate(MappingRule rule) {
-        if (!typeSystem.classExists(rule.getSourceClass())) {
-            throw new IllegalArgumentException("Unknown source class: " + rule.getSourceClass());
+    private void validate(TargetMapping mapping) {
+        List<SourceSpec> sources = mapping.getSources();
+        if (sources == null || sources.isEmpty()) {
+            throw new IllegalArgumentException("No sources defined for target class: " + mapping.getTargetClass());
         }
-        if (!typeSystem.classExists(rule.getTargetClass())) {
-            throw new IllegalArgumentException("Unknown target class: " + rule.getTargetClass());
+        for (SourceSpec source : sources) {
+            if (!typeSystem.classExists(source.getSourceClass())) {
+                throw new IllegalArgumentException("Unknown source class: " + source.getSourceClass());
+            }
         }
-        if (rule.getOidStrategy() != null && SUPPORTED_ID_STRATEGIES.stream()
-                .noneMatch(strategy -> strategy.equalsIgnoreCase(rule.getOidStrategy()))) {
-            throw new IllegalArgumentException("Unknown oidStrategy: " + rule.getOidStrategy());
+        if (!typeSystem.classExists(mapping.getTargetClass())) {
+            throw new IllegalArgumentException("Unknown target class: " + mapping.getTargetClass());
         }
-        if (rule.getAttributes() != null) {
-            for (AttributeMapping mapping : rule.getAttributes()) {
-                if (!typeSystem.attributeExists(rule.getTargetClass(), mapping.getTarget())) {
-                    throw new IllegalArgumentException("Unknown target attribute: " + rule.getTargetClass() + "." + mapping.getTarget());
+        if (mapping.getOidStrategy() != null && SUPPORTED_ID_STRATEGIES.stream()
+                .noneMatch(strategy -> strategy.equalsIgnoreCase(mapping.getOidStrategy()))) {
+            throw new IllegalArgumentException("Unknown oidStrategy: " + mapping.getOidStrategy());
+        }
+        if (mapping.getAttributes() != null) {
+            for (AttributeMapping attributeMapping : mapping.getAttributes()) {
+                if (!typeSystem.attributeExists(mapping.getTargetClass(), attributeMapping.getTarget())) {
+                    throw new IllegalArgumentException("Unknown target attribute: " + mapping.getTargetClass() + "." + attributeMapping.getTarget());
                 }
-                Matcher matcher = SOURCE_ATTR_PATTERN.matcher(mapping.getExpr());
+                Matcher matcher = SOURCE_ATTR_PATTERN.matcher(attributeMapping.getExpr());
                 while (matcher.find()) {
                     String attr = matcher.group("attr");
-                    if (!typeSystem.attributeExists(rule.getSourceClass(), attr)) {
-                        throw new IllegalArgumentException("Unknown source attribute: " + rule.getSourceClass() + "." + attr);
+                    String alias = matcher.group("alias");
+                    SourceSpec source = resolveSource(mapping, alias);
+                    if (!typeSystem.attributeExists(source.getSourceClass(), attr)) {
+                        throw new IllegalArgumentException("Unknown source attribute: " + source.getSourceClass() + "." + attr);
                     }
                 }
             }
         }
+    }
+
+    private SourceSpec resolveSource(TargetMapping mapping, String alias) {
+        if (alias == null || alias.isBlank()) {
+            if (mapping.getSources().size() == 1) {
+                return mapping.getSources().get(0);
+            }
+            throw new IllegalArgumentException("Attribute references must include an alias for multi-source mapping to " + mapping.getTargetClass());
+        }
+        for (SourceSpec source : mapping.getSources()) {
+            if (alias.equals(source.getAlias())) {
+                return source;
+            }
+        }
+        throw new IllegalArgumentException("Unknown source alias '" + alias + "' for target class " + mapping.getTargetClass());
     }
 
     private void validateBasketStrategy(String basketIdStrategy) {
