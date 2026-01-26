@@ -5,7 +5,7 @@ import com.interlis.transform.TypeSystem;
 import com.interlis.transform.mapping.AttributeMapping;
 import com.interlis.transform.mapping.MappingConfig;
 import com.interlis.transform.mapping.MappingRule;
-import com.interlis.transform.rules.ClassRuleSet;
+import com.interlis.transform.rules.TargetClassRuleSet;
 import com.interlis.transform.typesystem.InMemoryTypeSystem;
 import java.util.List;
 import java.util.Set;
@@ -32,7 +32,7 @@ class MappingCompilerTest {
 
         TransformationPlan plan = new MappingCompiler(typeSystem).compile(config);
 
-        ClassRuleSet ruleSet = plan.rulesFor("ModelA.Foo").orElseThrow();
+        TargetClassRuleSet ruleSet = plan.rulesFor("ModelA.Foo").stream().findFirst().orElseThrow();
 
         assertThat(ruleSet.processors()).hasSize(3);
     }

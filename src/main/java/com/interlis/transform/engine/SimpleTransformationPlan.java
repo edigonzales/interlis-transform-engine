@@ -1,24 +1,27 @@
 package com.interlis.transform.engine;
 
 import com.interlis.transform.TransformationPlan;
-import com.interlis.transform.rules.ClassRuleSet;
+import com.interlis.transform.rules.TargetClassRuleSet;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
 public final class SimpleTransformationPlan implements TransformationPlan {
-    private final Map<String, ClassRuleSet> rules;
+    private final Map<String, List<TargetClassRuleSet>> rules;
     private final String basketIdStrategy;
 
-    public SimpleTransformationPlan(Map<String, ClassRuleSet> rules, String basketIdStrategy) {
+    public SimpleTransformationPlan(Map<String, List<TargetClassRuleSet>> rules, String basketIdStrategy) {
         this.rules = Map.copyOf(Objects.requireNonNull(rules, "rules"));
         this.basketIdStrategy = basketIdStrategy;
     }
 
     @Override
-    public Optional<ClassRuleSet> rulesFor(String sourceClassName) {
-        return Optional.ofNullable(rules.get(sourceClassName));
+    public List<TargetClassRuleSet> rulesFor(String sourceClassName) {
+        List<TargetClassRuleSet> ruleSets = rules.get(sourceClassName);
+        return ruleSets == null ? List.of() : Collections.unmodifiableList(ruleSets);
     }
 
     @Override
