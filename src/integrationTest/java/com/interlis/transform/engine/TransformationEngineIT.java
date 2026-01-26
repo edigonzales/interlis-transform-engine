@@ -36,9 +36,9 @@ class TransformationEngineIT {
     void runsEndToEndMapping() throws Exception {
         MappingConfig config = new MappingConfig();
         TargetMapping rule = new TargetMapping();
-        SourceSpec source = new SourceSpec();
-        source.setSourceClass("ModelA.Foo");
-        rule.setSources(List.of(source));
+        SourceSpec sourceSpec = new SourceSpec();
+        sourceSpec.setSourceClass("ModelA.Foo");
+        rule.setSources(List.of(sourceSpec));
         rule.setTargetClass("ModelB.Bar");
         AttributeMapping attrY = new AttributeMapping();
         attrY.setTarget("y");
@@ -62,13 +62,13 @@ class TransformationEngineIT {
                 com.interlis.transform.RoleResolver.NONE
         );
 
-        Iom_jObject source = new Iom_jObject("ModelA.Foo", null);
-        source.setattrvalue("x", "42");
-        source.setattrvalue("a", "1");
-        source.setattrvalue("b", "2");
+        Iom_jObject sourceObject = new Iom_jObject("ModelA.Foo", null);
+        sourceObject.setattrvalue("x", "42");
+        sourceObject.setattrvalue("a", "1");
+        sourceObject.setattrvalue("b", "2");
 
         CollectingWriter writer = new CollectingWriter();
-        engine.run(new SingleObjectReader(source), writer, plan);
+        engine.run(new SingleObjectReader(sourceObject), writer, plan);
 
         assertThat(writer.objects()).hasSize(1);
         IomObject target = writer.objects().get(0);
