@@ -14,6 +14,8 @@ mappings:
         expr: "${src.Perimeter}"
       #- target: Mutationsart
       #  expr: "'Normal'"
+      - target: Gueltigkeit
+        expr: "if(${src.Grundbucheintrag} != null, 'gueltig', 'projektiert')"
       - target: GueltigerEintrag
         expr: "from_xml_datetime(${src.GueltigerEintrag})"
       - target: GBEintrag

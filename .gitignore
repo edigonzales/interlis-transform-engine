@@ -3,7 +3,7 @@ jte-classes/
 .DS_Store
 !datahub_key.xtf
 !datahub.xtf
-*.xtf
+!*.xtf
 !datahub*.xtf
 !datahub_key.xtf
 
