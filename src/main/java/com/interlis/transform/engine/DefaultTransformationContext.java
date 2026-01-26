@@ -5,12 +5,16 @@ import com.interlis.transform.TransformationContext;
 import com.interlis.transform.emit.TargetEmitter;
 import com.interlis.transform.expression.ExpressionEngine;
 import com.interlis.transform.state.StateStore;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Logger;
 
 public final class DefaultTransformationContext implements TransformationContext {
-    private final IomObject source;
+    private final Map<String, IomObject> sources;
+    private final String primaryAlias;
     private final TargetEmitter emitter;
     private final ExpressionEngine expressionEngine;
     private final StateStore stateStore;
@@ -19,13 +23,15 @@ public final class DefaultTransformationContext implements TransformationContext
     private boolean skip;
 
     public DefaultTransformationContext(
-            IomObject source,
+            Map<String, IomObject> sources,
+            String primaryAlias,
             TargetEmitter emitter,
             ExpressionEngine expressionEngine,
             StateStore stateStore,
             Logger logger
     ) {
-        this.source = Objects.requireNonNull(source, "source");
+        this.sources = Collections.unmodifiableMap(new HashMap<>(Objects.requireNonNull(sources, "sources")));
+        this.primaryAlias = Objects.requireNonNull(primaryAlias, "primaryAlias");
         this.emitter = Objects.requireNonNull(emitter, "emitter");
         this.expressionEngine = Objects.requireNonNull(expressionEngine, "expressionEngine");
         this.stateStore = Objects.requireNonNull(stateStore, "stateStore");
@@ -34,7 +40,20 @@ public final class DefaultTransformationContext implements TransformationContext
 
     @Override
     public IomObject source() {
-        return source;
+        return sources.get(primaryAlias);
+    }
+
+    @Override
+    public Optional<IomObject> source(String alias) {
+        if (alias == null || alias.isBlank()) {
+            return Optional.ofNullable(sources.get(primaryAlias));
+        }
+        return Optional.ofNullable(sources.get(alias));
+    }
+
+    @Override
+    public Map<String, IomObject> sources() {
+        return sources;
     }
 
     @Override

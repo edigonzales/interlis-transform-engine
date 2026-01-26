@@ -77,12 +77,25 @@ public final class BasicExpressionEngine implements ExpressionEngine {
 
     private Object resolvePath(String token, TransformationContext context) {
         if (token.startsWith("src.")) {
-            String attr = token.substring("src.".length());
-            IomObject attrObj = context.source().getattrobj(attr, 0);
+            String path = token.substring("src.".length());
+            String attr = path;
+            IomObject source = null;
+            int dotIndex = path.indexOf('.');
+            if (dotIndex > 0) {
+                String alias = path.substring(0, dotIndex);
+                attr = path.substring(dotIndex + 1);
+                source = context.source(alias).orElse(null);
+            } else {
+                source = context.source();
+            }
+            if (source == null) {
+                return null;
+            }
+            IomObject attrObj = source.getattrobj(attr, 0);
             if (attrObj != null) {
                 return attrObj;
             }
-            return context.source().getattrvalue(attr);
+            return source.getattrvalue(attr);
         }
         if (token.startsWith("state.")) {
             String key = token.substring("state.".length());

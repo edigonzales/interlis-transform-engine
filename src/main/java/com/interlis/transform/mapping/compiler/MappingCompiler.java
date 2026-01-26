@@ -13,8 +13,8 @@ import com.interlis.transform.processor.CreateTargetObjectProcessor;
 import com.interlis.transform.processor.EmitProcessor;
 import com.interlis.transform.processor.FilterProcessor;
 import com.interlis.transform.processor.MapAttributeProcessor;
-import com.interlis.transform.rules.ClassRuleSet;
 import com.interlis.transform.rules.DefaultClassRuleSet;
+import com.interlis.transform.rules.TargetClassRuleSet;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,7 +34,7 @@ public final class MappingCompiler {
     }
 
     public TransformationPlan compile(MappingConfig config) {
-        Map<String, ClassRuleSet> rules = new HashMap<>();
+        Map<String, List<TargetClassRuleSet>> rules = new HashMap<>();
         validateBasketStrategy(config.getBasketIdStrategy());
         if (config.getMappings() == null) {
             return new SimpleTransformationPlan(rules, config.getBasketIdStrategy());
@@ -54,9 +54,15 @@ public final class MappingCompiler {
                 }
             }
             processors.add(new EmitProcessor());
-            for (SourceSpec source : mapping.getSources()) {
-                rules.put(source.getSourceClass(), new DefaultClassRuleSet(mapping.getTargetClass(), processors));
-            }
+            SourceSpec primarySource = mapping.getSources().get(0);
+            TargetClassRuleSet ruleSet = new DefaultClassRuleSet(
+                    mapping.getTargetClass(),
+                    processors,
+                    mapping.getSources(),
+                    mapping.getJoins(),
+                    primarySource
+            );
+            rules.computeIfAbsent(primarySource.getSourceClass(), key -> new ArrayList<>()).add(ruleSet);
         }
         return new SimpleTransformationPlan(rules, config.getBasketIdStrategy());
     }
@@ -65,6 +71,13 @@ public final class MappingCompiler {
         List<SourceSpec> sources = mapping.getSources();
         if (sources == null || sources.isEmpty()) {
             throw new IllegalArgumentException("No sources defined for target class: " + mapping.getTargetClass());
+        }
+        if (sources.size() > 1) {
+            for (SourceSpec source : sources) {
+                if (source.getAlias() == null || source.getAlias().isBlank()) {
+                    throw new IllegalArgumentException("Missing alias for multi-source mapping to " + mapping.getTargetClass());
+                }
+            }
         }
         for (SourceSpec source : sources) {
             if (!typeSystem.classExists(source.getSourceClass())) {
@@ -92,6 +105,18 @@ public final class MappingCompiler {
                         throw new IllegalArgumentException("Unknown source attribute: " + source.getSourceClass() + "." + attr);
                     }
                 }
+            }
+        }
+        if (mapping.getJoins() != null) {
+            for (com.interlis.transform.mapping.JoinSpec joinSpec : mapping.getJoins()) {
+                if (joinSpec.getLeftAlias() == null || joinSpec.getLeftAlias().isBlank()) {
+                    throw new IllegalArgumentException("Join is missing leftAlias for target class " + mapping.getTargetClass());
+                }
+                if (joinSpec.getRightAlias() == null || joinSpec.getRightAlias().isBlank()) {
+                    throw new IllegalArgumentException("Join is missing rightAlias for target class " + mapping.getTargetClass());
+                }
+                resolveSource(mapping, joinSpec.getLeftAlias());
+                resolveSource(mapping, joinSpec.getRightAlias());
             }
         }
     }
