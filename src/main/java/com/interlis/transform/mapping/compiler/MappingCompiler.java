@@ -80,12 +80,12 @@ public final class MappingCompiler {
             }
         }
         for (SourceSpec source : sources) {
-            if (!typeSystem.classExists(source.getSourceClass())) {
-                throw new IllegalArgumentException("Unknown source class: " + source.getSourceClass());
+            if (!typeSystem.classExists(source.getSourceClass()) && !typeSystem.associationExists(source.getSourceClass())) {
+                throw new IllegalArgumentException("Unknown source class or association: " + source.getSourceClass());
             }
         }
-        if (!typeSystem.classExists(mapping.getTargetClass())) {
-            throw new IllegalArgumentException("Unknown target class: " + mapping.getTargetClass());
+        if (!typeSystem.classExists(mapping.getTargetClass()) && !typeSystem.associationExists(mapping.getTargetClass())) {
+            throw new IllegalArgumentException("Unknown target class or association: " + mapping.getTargetClass());
         }
         if (mapping.getOidStrategy() != null && SUPPORTED_ID_STRATEGIES.stream()
                 .noneMatch(strategy -> strategy.equalsIgnoreCase(mapping.getOidStrategy()))) {
@@ -93,18 +93,10 @@ public final class MappingCompiler {
         }
         if (mapping.getAttributes() != null) {
             for (AttributeMapping attributeMapping : mapping.getAttributes()) {
-                if (!typeSystem.attributeExists(mapping.getTargetClass(), attributeMapping.getTarget())) {
-                    throw new IllegalArgumentException("Unknown target attribute: " + mapping.getTargetClass() + "." + attributeMapping.getTarget());
+                if (!typeSystem.attributePathExists(mapping.getTargetClass(), attributeMapping.getTarget())) {
+                    throw new IllegalArgumentException("Unknown target attribute path: " + mapping.getTargetClass() + "." + attributeMapping.getTarget());
                 }
-                Matcher matcher = SOURCE_ATTR_PATTERN.matcher(attributeMapping.getExpr());
-                while (matcher.find()) {
-                    String attr = matcher.group("attr");
-                    String alias = matcher.group("alias");
-                    SourceSpec source = resolveSource(mapping, alias);
-                    if (!typeSystem.attributeExists(source.getSourceClass(), attr)) {
-                        throw new IllegalArgumentException("Unknown source attribute: " + source.getSourceClass() + "." + attr);
-                    }
-                }
+                validateExpression(mapping, attributeMapping.getExpr(), "attribute mapping '" + attributeMapping.getTarget() + "'");
             }
         }
         if (mapping.getJoins() != null) {
@@ -117,6 +109,12 @@ public final class MappingCompiler {
                 }
                 resolveSource(mapping, joinSpec.getLeftAlias());
                 resolveSource(mapping, joinSpec.getRightAlias());
+                validateExpression(mapping, joinSpec.getExpr(), "join expression");
+            }
+        }
+        if (mapping.getFilters() != null) {
+            for (FilterRule filterRule : mapping.getFilters()) {
+                validateExpression(mapping, filterRule.getExpr(), "filter expression");
             }
         }
     }
@@ -142,4 +140,164 @@ public final class MappingCompiler {
             throw new IllegalArgumentException("Unknown basketIdStrategy: " + basketIdStrategy);
         }
     }
+
+    private void validateExpression(TargetMapping mapping, String expression, String contextLabel) {
+        if (expression == null || expression.isBlank()) {
+            return;
+        }
+        Matcher matcher = SOURCE_ATTR_PATTERN.matcher(expression);
+        while (matcher.find()) {
+            String attr = matcher.group("attr");
+            String alias = matcher.group("alias");
+            SourceSpec source = resolveSource(mapping, alias);
+            if (!typeSystem.attributePathExists(source.getSourceClass(), attr)) {
+                throw new IllegalArgumentException("Unknown source attribute path: " + source.getSourceClass()
+                        + "." + attr + " in " + contextLabel + " for target class " + mapping.getTargetClass());
+            }
+        }
+        for (RefCall refCall : extractRefCalls(expression)) {
+            if (refCall.role() == null) {
+                continue;
+            }
+            SourceSpec source = resolveSource(mapping, refCall.alias());
+            if (!typeSystem.roleExists(source.getSourceClass(), refCall.role())) {
+                throw new IllegalArgumentException("Unknown role '" + refCall.role() + "' on source class "
+                        + source.getSourceClass() + " in " + contextLabel + " for target class " + mapping.getTargetClass());
+            }
+        }
+    }
+
+    private List<RefCall> extractRefCalls(String expression) {
+        List<RefCall> calls = new ArrayList<>();
+        boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
+        for (int i = 0; i < expression.length(); i++) {
+            char ch = expression.charAt(i);
+            if (ch == '\'' && !inDoubleQuote) {
+                inSingleQuote = !inSingleQuote;
+            } else if (ch == '"' && !inSingleQuote) {
+                inDoubleQuote = !inDoubleQuote;
+            }
+            if (inSingleQuote || inDoubleQuote) {
+                continue;
+            }
+            int openParen = refCallStart(expression, i);
+            if (openParen != -1) {
+                int startArgs = openParen + 1;
+                int depth = 1;
+                int end = -1;
+                boolean innerSingle = false;
+                boolean innerDouble = false;
+                for (int j = startArgs; j < expression.length(); j++) {
+                    char inner = expression.charAt(j);
+                    if (inner == '\'' && !innerDouble) {
+                        innerSingle = !innerSingle;
+                    } else if (inner == '"' && !innerSingle) {
+                        innerDouble = !innerDouble;
+                    } else if (!innerSingle && !innerDouble) {
+                        if (inner == '(') {
+                            depth++;
+                        } else if (inner == ')') {
+                            depth--;
+                            if (depth == 0) {
+                                end = j;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (end > startArgs) {
+                    String argsSection = expression.substring(startArgs, end);
+                    List<String> args = splitTopLevel(argsSection, ',');
+                    String alias = null;
+                    String role = null;
+                    if (args.size() == 1) {
+                        role = normalizeToken(args.get(0));
+                    } else if (args.size() >= 2) {
+                        alias = normalizeToken(args.get(0));
+                        role = normalizeToken(args.get(1));
+                    }
+                    if (role != null && !role.isBlank()) {
+                        calls.add(new RefCall(alias, role));
+                    }
+                }
+                i = openParen;
+            }
+        }
+        return calls;
+    }
+
+    private boolean isFunctionBoundary(String expression, int index) {
+        if (index == 0) {
+            return true;
+        }
+        char before = expression.charAt(index - 1);
+        return !Character.isLetterOrDigit(before) && before != '_';
+    }
+
+    private int refCallStart(String expression, int index) {
+        if (!expression.regionMatches(true, index, "ref", 0, 3)) {
+            return -1;
+        }
+        if (!isFunctionBoundary(expression, index)) {
+            return -1;
+        }
+        int j = index + 3;
+        while (j < expression.length() && Character.isWhitespace(expression.charAt(j))) {
+            j++;
+        }
+        if (j < expression.length() && expression.charAt(j) == '(') {
+            return j;
+        }
+        return -1;
+    }
+
+    private String normalizeToken(String token) {
+        if (token == null) {
+            return null;
+        }
+        String trimmed = token.trim();
+        if (trimmed.isEmpty()) {
+            return trimmed;
+        }
+        if ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+            return trimmed.substring(1, trimmed.length() - 1);
+        }
+        if (trimmed.contains("${") || trimmed.contains("(") || trimmed.contains(")")) {
+            return null;
+        }
+        return trimmed;
+    }
+
+    private List<String> splitTopLevel(String value, char delimiter) {
+        List<String> parts = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        int depth = 0;
+        boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (ch == '\'' && !inDoubleQuote) {
+                inSingleQuote = !inSingleQuote;
+            } else if (ch == '"' && !inSingleQuote) {
+                inDoubleQuote = !inDoubleQuote;
+            } else if (!inSingleQuote && !inDoubleQuote) {
+                if (ch == '(') {
+                    depth++;
+                } else if (ch == ')') {
+                    depth--;
+                }
+            }
+            if (ch == delimiter && depth == 0 && !inSingleQuote && !inDoubleQuote) {
+                parts.add(current.toString());
+                current.setLength(0);
+                continue;
+            }
+            current.append(ch);
+        }
+        parts.add(current.toString());
+        return parts;
+    }
+
+    private record RefCall(String alias, String role) {}
 }
