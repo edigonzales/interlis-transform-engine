@@ -47,7 +47,7 @@ run {
 sourceSets {
     integrationTest {
         java.srcDir 'src/integrationTest/java'
-        resources.srcDir 'src/integrationTest/resources'
+        resources.setSrcDirs(['src/integrationTest/resources'])
         compileClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
         runtimeClasspath += output + compileClasspath
     }
