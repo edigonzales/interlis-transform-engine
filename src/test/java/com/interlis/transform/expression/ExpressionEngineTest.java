@@ -162,4 +162,26 @@ class ExpressionEngineTest {
 
         assertThat(result).isSameAs(geometry);
     }
+
+    @Test
+    void evaluatesIfWithNullChecks() {
+        ExpressionEngine engine = new BasicExpressionEngine(new FunctionRegistry());
+        Iom_jObject source = new Iom_jObject("ModelA.Foo", null);
+        source.setattrvalue("status", "set");
+
+        TransformationContext context = new DefaultTransformationContext(
+                source,
+                target -> {
+                },
+                engine,
+                new InMemoryStateStore(),
+                Logger.getLogger("test")
+        );
+
+        Object whenSet = engine.evaluate("if(${src.status} != null, 'gueltig', 'projektiert')", context);
+        Object whenMissing = engine.evaluate("if(${src.missing} != null, 'gueltig', 'projektiert')", context);
+
+        assertThat(whenSet).isEqualTo("gueltig");
+        assertThat(whenMissing).isEqualTo("projektiert");
+    }
 }

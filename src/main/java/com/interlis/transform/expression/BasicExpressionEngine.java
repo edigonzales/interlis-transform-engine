@@ -20,16 +20,25 @@ public final class BasicExpressionEngine implements ExpressionEngine {
         if (trimmed.isEmpty()) {
             return null;
         }
-        if (trimmed.contains("!=")) {
-            String[] parts = trimmed.split("!=", 2);
-            Object left = evaluate(parts[0].trim(), context);
-            Object right = evaluate(parts[1].trim(), context);
+        if (trimmed.equalsIgnoreCase("null")) {
+            return null;
+        }
+        if (trimmed.equalsIgnoreCase("true")) {
+            return true;
+        }
+        if (trimmed.equalsIgnoreCase("false")) {
+            return false;
+        }
+        String[] notEquals = splitTopLevelOperator(trimmed, "!=");
+        if (notEquals != null) {
+            Object left = evaluate(notEquals[0].trim(), context);
+            Object right = evaluate(notEquals[1].trim(), context);
             return !Objects.equals(stringify(left), stringify(right));
         }
-        if (trimmed.contains("==")) {
-            String[] parts = trimmed.split("==", 2);
-            Object left = evaluate(parts[0].trim(), context);
-            Object right = evaluate(parts[1].trim(), context);
+        String[] equals = splitTopLevelOperator(trimmed, "==");
+        if (equals != null) {
+            Object left = evaluate(equals[0].trim(), context);
+            Object right = evaluate(equals[1].trim(), context);
             return Objects.equals(stringify(left), stringify(right));
         }
         List<String> plusParts = splitTopLevel(trimmed, '+');
@@ -118,6 +127,30 @@ public final class BasicExpressionEngine implements ExpressionEngine {
         }
         parts.add(current.toString());
         return parts;
+    }
+
+    private String[] splitTopLevelOperator(String value, String operator) {
+        int depth = 0;
+        boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (ch == '\'' && !inDoubleQuote) {
+                inSingleQuote = !inSingleQuote;
+            } else if (ch == '"' && !inSingleQuote) {
+                inDoubleQuote = !inDoubleQuote;
+            } else if (!inSingleQuote && !inDoubleQuote) {
+                if (ch == '(') {
+                    depth++;
+                } else if (ch == ')') {
+                    depth--;
+                }
+            }
+            if (!inSingleQuote && !inDoubleQuote && depth == 0 && value.startsWith(operator, i)) {
+                return new String[]{value.substring(0, i), value.substring(i + operator.length())};
+            }
+        }
+        return null;
     }
 
     private String stringify(Object value) {

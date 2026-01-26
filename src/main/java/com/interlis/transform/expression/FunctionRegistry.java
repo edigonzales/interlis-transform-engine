@@ -63,6 +63,13 @@ public final class FunctionRegistry {
             }
             return Double.toString(sum);
         });
+        register("if", args -> {
+            if (args.size() < 3) {
+                throw new IllegalArgumentException("if requires condition, true value, and false value arguments");
+            }
+            boolean condition = toBoolean(args.get(0));
+            return condition ? args.get(1) : args.get(2);
+        });
         register("to_xml_date", args -> {
             if (args.isEmpty()) {
                 throw new IllegalArgumentException("to_xml_date requires at least a value argument");
@@ -139,6 +146,23 @@ public final class FunctionRegistry {
 
     private int toInt(Object value) {
         return Integer.parseInt(Objects.toString(value));
+    }
+
+    private boolean toBoolean(Object value) {
+        if (value == null) {
+            return false;
+        }
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        String raw = value.toString().trim();
+        if (raw.equalsIgnoreCase("true")) {
+            return true;
+        }
+        if (raw.equalsIgnoreCase("false") || raw.isEmpty()) {
+            return false;
+        }
+        throw new IllegalArgumentException("Unable to interpret '" + raw + "' as boolean");
     }
 
     public Object invoke(String name, List<Object> args) {
