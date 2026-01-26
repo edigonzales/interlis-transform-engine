@@ -18,7 +18,8 @@ import com.interlis.transform.expression.ExpressionEngine;
 import com.interlis.transform.expression.FunctionRegistry;
 import com.interlis.transform.mapping.AttributeMapping;
 import com.interlis.transform.mapping.MappingConfig;
-import com.interlis.transform.mapping.MappingRule;
+import com.interlis.transform.mapping.SourceSpec;
+import com.interlis.transform.mapping.TargetMapping;
 import com.interlis.transform.mapping.compiler.MappingCompiler;
 import com.interlis.transform.state.InMemoryStateStore;
 import com.interlis.transform.typesystem.InMemoryTypeSystem;
@@ -34,8 +35,10 @@ class TransformationEngineIT {
     @Test
     void runsEndToEndMapping() throws Exception {
         MappingConfig config = new MappingConfig();
-        MappingRule rule = new MappingRule();
-        rule.setSourceClass("ModelA.Foo");
+        TargetMapping rule = new TargetMapping();
+        SourceSpec source = new SourceSpec();
+        source.setSourceClass("ModelA.Foo");
+        rule.setSources(List.of(source));
         rule.setTargetClass("ModelB.Bar");
         AttributeMapping attrY = new AttributeMapping();
         attrY.setTarget("y");
@@ -55,7 +58,8 @@ class TransformationEngineIT {
         DefaultTransformationEngine engine = new DefaultTransformationEngine(
                 expressionEngine,
                 new InMemoryStateStore(),
-                Logger.getLogger("test")
+                Logger.getLogger("test"),
+                com.interlis.transform.RoleResolver.NONE
         );
 
         Iom_jObject source = new Iom_jObject("ModelA.Foo", null);

@@ -47,7 +47,7 @@ public final class BasicExpressionEngine implements ExpressionEngine {
             for (String part : plusParts) {
                 args.add(evaluate(part.trim(), context));
             }
-            return functionRegistry.invoke("add", args);
+            return functionRegistry.invoke("add", args, context);
         }
         if (isStringLiteral(trimmed)) {
             return trimmed.substring(1, trimmed.length() - 1);
@@ -70,7 +70,7 @@ public final class BasicExpressionEngine implements ExpressionEngine {
                     args.add(evaluate(arg.trim(), context));
                 }
             }
-            return functionRegistry.invoke(name, args);
+            return functionRegistry.invoke(name, args, context);
         }
         return trimmed;
     }
@@ -83,8 +83,14 @@ public final class BasicExpressionEngine implements ExpressionEngine {
             int dotIndex = path.indexOf('.');
             if (dotIndex > 0) {
                 String alias = path.substring(0, dotIndex);
-                attr = path.substring(dotIndex + 1);
-                source = context.source(alias).orElse(null);
+                if (context.sources().containsKey(alias)) {
+                    attr = path.substring(dotIndex + 1);
+                    source = context.source(alias).orElse(null);
+                } else if (context.sources().size() == 1) {
+                    source = context.source();
+                } else {
+                    return null;
+                }
             } else {
                 source = context.source();
             }
