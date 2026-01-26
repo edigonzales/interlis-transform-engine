@@ -3,14 +3,14 @@ package com.interlis.transform.mapping;
 import java.util.List;
 
 public final class MappingConfig {
-    private List<MappingRule> mappings;
+    private List<TargetMapping> mappings;
     private String basketIdStrategy;
 
-    public List<MappingRule> getMappings() {
+    public List<TargetMapping> getMappings() {
         return mappings;
     }
 
-    public void setMappings(List<MappingRule> mappings) {
+    public void setMappings(List<TargetMapping> mappings) {
         this.mappings = mappings;
     }
 
