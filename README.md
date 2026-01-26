@@ -2,19 +2,22 @@
 
 ```mermaid
 sequenceDiagram
-    participant App as com.interlis.transform.App
-    participant Loader as com.interlis.transform.InterlisModelLoader
-    participant Compiler as com.interlis.transform.MappingCompiler
-    participant Engine as com.interlis.transform.DefaultTransformationEngine
-    participant Reader as com.interlis.transform.InterlisIoFactory
-    participant Writer as com.interlis.transform.InterlisIoFactory
-    participant Expr as com.interlis.transform.BasicExpressionEngine
+    participant App as com.interlis.transform.app.App
+    participant Config as com.interlis.transform.mapping.compiler.MappingConfigLoader
+    participant Loader as com.interlis.transform.interlis.InterlisModelLoader
+    participant Compiler as com.interlis.transform.mapping.compiler.MappingCompiler
+    participant Engine as com.interlis.transform.engine.DefaultTransformationEngine
+    participant IOFactory as com.interlis.transform.interlis.InterlisIoFactory
+    participant Expr as com.interlis.transform.expression.BasicExpressionEngine
     participant Proc as com.interlis.transform.Processor
+    participant Reader as ch.interlis.iox.IoxReader
+    participant Writer as ch.interlis.iox.IoxWriter
 
+    App->>Config: load(mappingPath)
     App->>Loader: compileModel(modelName, modelDirs)
     App->>Compiler: compile(MappingConfig)
-    App->>Reader: createReader(inputPath, sourceTD)
-    App->>Writer: createWriter(outputPath, targetTD)
+    App->>IOFactory: createReader(inputPath, sourceTD)
+    App->>IOFactory: createWriter(outputPath, targetTD)
     App->>Engine: run(reader, writer, plan)
 
     loop events
@@ -22,6 +25,7 @@ sequenceDiagram
         Engine->>Proc: apply(context)
         Proc->>Expr: evaluate(expr, context)
         Proc-->>Engine: emit target
+        Engine-->>Writer: write(IoxEvent)
     end
 ```
 
