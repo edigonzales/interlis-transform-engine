@@ -1,13 +1,16 @@
 package com.interlis.transform.expression;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import ch.interlis.iom.IomObject;
+import com.interlis.transform.TransformationContext;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 public final class FunctionRegistry {
     private final Map<String, ExpressionFunction> functions = new HashMap<>();
@@ -29,7 +32,7 @@ public final class FunctionRegistry {
     }
 
     private void registerDefaults() {
-        register("substring", args -> {
+        register("substring", (args, context) -> {
             String value = Objects.toString(args.get(0), "");
             int start = toInt(args.get(1));
             int length = toInt(args.get(2));
@@ -39,7 +42,7 @@ public final class FunctionRegistry {
             }
             return value.substring(Math.max(0, start), end);
         });
-        register("coalesce", args -> {
+        register("coalesce", (args, context) -> {
             for (Object arg : args) {
                 if (arg != null) {
                     String value = arg.toString();
@@ -50,7 +53,7 @@ public final class FunctionRegistry {
             }
             return null;
         });
-        register("add", args -> {
+        register("add", (args, context) -> {
             double sum = 0;
             for (Object arg : args) {
                 if (arg == null) {
@@ -63,14 +66,14 @@ public final class FunctionRegistry {
             }
             return Double.toString(sum);
         });
-        register("if", args -> {
+        register("if", (args, context) -> {
             if (args.size() < 3) {
                 throw new IllegalArgumentException("if requires condition, true value, and false value arguments");
             }
             boolean condition = toBoolean(args.get(0));
             return condition ? args.get(1) : args.get(2);
         });
-        register("to_xml_date", args -> {
+        register("to_xml_date", (args, context) -> {
             if (args.isEmpty()) {
                 throw new IllegalArgumentException("to_xml_date requires at least a value argument");
             }
@@ -90,7 +93,7 @@ public final class FunctionRegistry {
                 throw new IllegalArgumentException("Invalid date value '" + raw + "' for pattern '" + pattern + "'", e);
             }
         });
-        register("to_xml_datetime", args -> {
+        register("to_xml_datetime", (args, context) -> {
             if (args.isEmpty()) {
                 throw new IllegalArgumentException("to_xml_datetime requires at least a value argument");
             }
@@ -114,7 +117,7 @@ public final class FunctionRegistry {
                 throw new IllegalArgumentException("Invalid datetime value '" + raw + "' for pattern '" + pattern + "'", e);
             }
         });
-        register("from_xml_date", args -> {
+        register("from_xml_date", (args, context) -> {
             if (args.isEmpty()) {
                 throw new IllegalArgumentException("from_xml_date requires at least a value argument");
             }
@@ -136,11 +139,54 @@ public final class FunctionRegistry {
                 throw new IllegalArgumentException("Invalid date value '" + raw + "' for ISO date", e);
             }
         });
-        register("from_xml_datetime", args -> {
+        register("from_xml_datetime", (args, context) -> {
             if (args.isEmpty()) {
                 throw new IllegalArgumentException("from_xml_datetime requires at least a value argument");
             }
-            return get("from_xml_date").apply(args);
+            return get("from_xml_date").apply(args, context);
+        });
+        register("ref", (args, context) -> {
+            if (args.isEmpty()) {
+                throw new IllegalArgumentException("ref requires a role name or alias and role arguments");
+            }
+            int roleIndex = args.size() == 1 ? 0 : 1;
+            String alias = args.size() == 1 ? null : Objects.toString(args.get(0), null);
+            String role = Objects.toString(args.get(roleIndex), null);
+            if (role == null || role.isBlank()) {
+                return null;
+            }
+            IomObject source = context.source(alias).orElse(null);
+            if (source == null) {
+                return null;
+            }
+            Optional<String> targetClass = context.roleResolver().resolveRoleTarget(source.getobjecttag(), role);
+            if (targetClass.isEmpty()) {
+                return null;
+            }
+            String oid = null;
+            String basketId = null;
+            IomObject refObject = source.getattrobj(role, 0);
+            if (refObject != null) {
+                basketId = refObject.getobjectrefbid();
+                oid = refObject.getobjectrefoid();
+                if (oid == null || oid.isBlank()) {
+                    oid = refObject.getattrvalue("ref");
+                }
+            }
+            if (oid == null || oid.isBlank()) {
+                String raw = source.getattrvalue(role);
+                if (raw != null && !raw.isBlank()) {
+                    oid = raw;
+                }
+            }
+            if (oid == null || oid.isBlank()) {
+                return null;
+            }
+            String resolvedBasketId = basketId;
+            if (resolvedBasketId == null || resolvedBasketId.isBlank()) {
+                resolvedBasketId = context.basketId().orElse(null);
+            }
+            return context.state().findObject(targetClass.get(), resolvedBasketId, oid).orElse(null);
         });
     }
 
@@ -165,7 +211,7 @@ public final class FunctionRegistry {
         throw new IllegalArgumentException("Unable to interpret '" + raw + "' as boolean");
     }
 
-    public Object invoke(String name, List<Object> args) {
-        return get(name).apply(args);
+    public Object invoke(String name, List<Object> args, TransformationContext context) {
+        return get(name).apply(args, context);
     }
 }

@@ -1,7 +1,8 @@
 package com.interlis.transform.mapping.compiler;
 
 import com.interlis.transform.mapping.MappingConfig;
-import com.interlis.transform.mapping.MappingRule;
+import com.interlis.transform.mapping.SourceSpec;
+import com.interlis.transform.mapping.TargetMapping;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -26,9 +27,10 @@ class MappingConfigLoaderTest {
 
         assertThat(config.getMappings()).isNotNull();
         assertThat(config.getMappings()).hasSize(1);
-        MappingRule rule = config.getMappings().get(0);
-        assertThat(rule.getSourceClass()).isEqualTo("DM01AVSO24LV95.Liegenschaften.LSNachfuehrung");
+        TargetMapping rule = config.getMappings().get(0);
         assertThat(rule.getTargetClass()).isEqualTo("DMAV_Grundstuecke_V1_0.Grundstuecke.GSNachfuehrung");
         assertThat(rule.getAttributes()).hasSize(7);
+        SourceSpec source = rule.getSources().get(0);
+        assertThat(source.getSourceClass()).isEqualTo("DM01AVSO24LV95.Liegenschaften.LSNachfuehrung");
     }
 }

@@ -3,6 +3,7 @@ package com.interlis.transform.app;
 import ch.interlis.ili2c.metamodel.TransferDescription;
 import ch.interlis.iox.IoxReader;
 import ch.interlis.iox.IoxWriter;
+import com.interlis.transform.RoleResolver;
 import com.interlis.transform.TransformationPlan;
 import com.interlis.transform.TypeSystem;
 import com.interlis.transform.engine.DefaultTransformationEngine;
@@ -15,6 +16,7 @@ import com.interlis.transform.mapping.MappingConfig;
 import com.interlis.transform.mapping.compiler.MappingCompiler;
 import com.interlis.transform.mapping.compiler.MappingConfigLoader;
 import com.interlis.transform.state.InMemoryStateStore;
+import com.interlis.transform.typesystem.CompositeIliRoleResolver;
 import com.interlis.transform.typesystem.CompositeIliTypeSystem;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -56,6 +58,7 @@ public final class App {
             allDescriptions.add(modelLoader.compileModel(modelNames.get(i), modelDirectories));
         }
         TypeSystem typeSystem = new CompositeIliTypeSystem(allDescriptions);
+        RoleResolver roleResolver = new CompositeIliRoleResolver(allDescriptions);
 
         TransformationPlan plan = new MappingCompiler(typeSystem).compile(config);
 
@@ -63,7 +66,8 @@ public final class App {
         DefaultTransformationEngine engine = new DefaultTransformationEngine(
                 expressionEngine,
                 new InMemoryStateStore(),
-                Logger.getLogger(App.class.getName())
+                Logger.getLogger(App.class.getName()),
+                roleResolver
         );
 
         InterlisIoFactory ioFactory = new InterlisIoFactory();

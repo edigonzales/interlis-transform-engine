@@ -2,9 +2,11 @@ package com.interlis.transform.expression;
 
 import ch.interlis.iom.IomObject;
 import ch.interlis.iom_j.Iom_jObject;
+import com.interlis.transform.RoleResolver;
 import com.interlis.transform.TransformationContext;
 import com.interlis.transform.engine.DefaultTransformationContext;
 import com.interlis.transform.state.InMemoryStateStore;
+import java.util.Map;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
 
@@ -183,5 +185,39 @@ class ExpressionEngineTest {
 
         assertThat(whenSet).isEqualTo("gueltig");
         assertThat(whenMissing).isEqualTo("projektiert");
+    }
+
+    @Test
+    void resolvesReferenceUsingRoleMetadata() {
+        ExpressionEngine engine = new BasicExpressionEngine(new FunctionRegistry());
+        InMemoryStateStore stateStore = new InMemoryStateStore();
+        Iom_jObject source = new Iom_jObject("ModelA.Source", "s1");
+        Iom_jObject ref = new Iom_jObject("REF", null);
+        ref.setobjectrefoid("t1");
+        source.addattrobj("target", ref);
+        Iom_jObject target = new Iom_jObject("ModelA.Target", "t1");
+        stateStore.indexObject("ModelA.Target", "b1", target);
+
+        RoleResolver roleResolver = (viewableName, roleName) -> {
+            if ("ModelA.Source".equals(viewableName) && "target".equals(roleName)) {
+                return java.util.Optional.of("ModelA.Target");
+            }
+            return java.util.Optional.empty();
+        };
+        TransformationContext context = new DefaultTransformationContext(
+                Map.of("src", source),
+                "src",
+                "b1",
+                targetObj -> {
+                },
+                engine,
+                stateStore,
+                Logger.getLogger("test"),
+                roleResolver
+        );
+
+        Object resolved = engine.evaluate("ref('target')", context);
+
+        assertThat(resolved).isSameAs(target);
     }
 }

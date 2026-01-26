@@ -4,7 +4,8 @@ import com.interlis.transform.TransformationPlan;
 import com.interlis.transform.TypeSystem;
 import com.interlis.transform.mapping.AttributeMapping;
 import com.interlis.transform.mapping.MappingConfig;
-import com.interlis.transform.mapping.MappingRule;
+import com.interlis.transform.mapping.SourceSpec;
+import com.interlis.transform.mapping.TargetMapping;
 import com.interlis.transform.rules.TargetClassRuleSet;
 import com.interlis.transform.typesystem.InMemoryTypeSystem;
 import java.util.List;
@@ -17,8 +18,10 @@ class MappingCompilerTest {
     @Test
     void compilesMappingIntoPlan() {
         MappingConfig config = new MappingConfig();
-        MappingRule rule = new MappingRule();
-        rule.setSourceClass("ModelA.Foo");
+        TargetMapping rule = new TargetMapping();
+        SourceSpec source = new SourceSpec();
+        source.setSourceClass("ModelA.Foo");
+        rule.setSources(List.of(source));
         rule.setTargetClass("ModelB.Bar");
         AttributeMapping attr = new AttributeMapping();
         attr.setTarget("y");

@@ -10,6 +10,7 @@ import ch.interlis.iox.ObjectEvent;
 import ch.interlis.iox.StartBasketEvent;
 import ch.interlis.iox.StartTransferEvent;
 import com.interlis.transform.Processor;
+import com.interlis.transform.RoleResolver;
 import com.interlis.transform.TransformationEngine;
 import com.interlis.transform.TransformationPlan;
 import com.interlis.transform.emit.TargetEmitter;
@@ -22,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -29,11 +31,18 @@ public final class DefaultTransformationEngine implements TransformationEngine {
     private final ExpressionEngine expressionEngine;
     private final StateStore stateStore;
     private final Logger logger;
+    private final RoleResolver roleResolver;
 
-    public DefaultTransformationEngine(ExpressionEngine expressionEngine, StateStore stateStore, Logger logger) {
+    public DefaultTransformationEngine(
+            ExpressionEngine expressionEngine,
+            StateStore stateStore,
+            Logger logger,
+            RoleResolver roleResolver
+    ) {
         this.expressionEngine = expressionEngine;
         this.stateStore = stateStore;
         this.logger = logger;
+        this.roleResolver = Objects.requireNonNull(roleResolver, "roleResolver");
     }
 
     @Override
@@ -141,10 +150,12 @@ public final class DefaultTransformationEngine implements TransformationEngine {
             DefaultTransformationContext context = new DefaultTransformationContext(
                     contextSources,
                     primaryAlias,
+                    currentBasketId,
                     emitter,
                     expressionEngine,
                     stateStore,
-                    logger
+                    logger,
+                    roleResolver
             );
             List<Processor> processors = ruleSet.processors();
             for (Processor processor : processors) {
@@ -182,10 +193,12 @@ public final class DefaultTransformationEngine implements TransformationEngine {
                     DefaultTransformationContext joinContext = new DefaultTransformationContext(
                             expanded,
                             primaryAlias,
+                            currentBasketId,
                             emitter,
                             expressionEngine,
                             stateStore,
-                            logger
+                            logger,
+                            roleResolver
                     );
                     Object result = expressionEngine.evaluate(joinSpec.getExpr(), joinContext);
                     boolean matches = result instanceof Boolean
